@@ -4,6 +4,7 @@
 ## Description
 This 3-step workshop is intended to showcase how you can register and show Doichain names and sign them via PSBT-QR-Code or PSBT-File, 
 which can be scanned (by DoiWallet) or imported (into the ElectrumDOI wallet).
+See: ipfs://QmZmvtgcxNof3QvKgC73SmbDawHCwxTnkMpWukTLokcgHS/ 
 
 ### Step 1)
 0. Clone this repo and run ```npm i``` 
