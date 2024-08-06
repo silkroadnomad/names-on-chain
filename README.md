@@ -1,18 +1,19 @@
 # Names-On-Chain 
 ### A Doichain - PSBT Workshop
 
-## Descriptions
-This 3-step workshop is intended to showcase how you can register and show names on Doichain and
-show it via PSBT-QR-Code or PSBT-File which can be scanned by DoiWallet or imported into the ElectrumDOI wallet.
+## Description
+This 3-step workshop is intended to showcase how you can register and show Doichain names and sign them via PSBT-QR-Code or PSBT-File, 
+which can be scanned (by DoiWallet) or imported (into the ElectrumDOI wallet).
 
-Step 1) 
-- Connect to ElectrumX
-- Get UTXOs and NameOP-Transactions of a Doichain Address
-
-Step 2) 
-- Call NameShow of a name via ElectrumX and receive transaction details
-
-Step 3) 
-- Generate a name_doi - Doichain Transaction as PSBT-QR-Code with BC-QR
-
-
+Step 1)
+0. Clone this repo and run ```npm i``` 
+1. Connect to ElectrumX in +layout.js
+2. Validate name to be registered in pricing.svelte
+   - is name already registered? 
+   - if yes - which address?
+3. Build project and add to local ipfs node
+```
+npm run build
+ipfs add public/
+```
+4. Run Brave browser an open ipfs url: ipfs://{cid of your ipfs add command}

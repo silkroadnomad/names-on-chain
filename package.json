@@ -1,6 +1,6 @@
 {
-	"name": "le-space-2024",
-	"version": "0.1.14",
+	"name": "names-on-chain",
+	"version": "0.0.1",
 	"private": true,
 	"scripts": {
 		"dev": "vite dev",
@@ -45,6 +45,7 @@
 		"bitcoinjs-lib": "^6.1.6",
 		"events": "^3.3.0",
 		"globals": "^15.9.0",
+		"lodash": "^4.17.21",
 		"moment": "^2.30.1",
 		"satoshi-bitcoin": "^1.0.5",
 		"vite-plugin-node-polyfills": "^0.22.0"

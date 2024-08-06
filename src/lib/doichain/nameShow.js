@@ -3,10 +3,18 @@ import { crypto } from 'bitcoinjs-lib'
 import { getNameOpUTXOsOfTxHash } from './getNameOpUTXOsOfTxHash.js'
 
 /**
- * Call Electrumx and find transaction with the given nameId
- * @param electrumClient
- * @param nameToCheck
- * @returns {Promise<*[]>}
+ * Queries Electrumx to find transactions associated with a given nameId
+ *
+ * @param {ElectrumClient} electrumClient - The Electrum client instance to use for querying
+ * @param {string} nameToCheck - The nameId to search for in the blockchain
+ *
+ * @returns {Promise<Array<Object>>} A promise that resolves to an array of UTXO objects
+ * @throws {Error} If there's an issue connecting to the Electrum server or querying the blockchain
+ *
+ * @example
+ * const electrumClient = new ElectrumClient( );
+ * const nameId = 'example.doi';
+ * const utxos = await nameShow(electrumClient, nameId);
  */
 export const nameShow = async (electrumClient, nameToCheck) => {
 

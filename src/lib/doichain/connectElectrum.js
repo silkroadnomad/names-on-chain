@@ -16,6 +16,15 @@ network.subscribe((value) => _network = value);
 const MAX_RETRIES = 25;
 const RETRY_DELAY = 5000;
 
+/**
+ * Connect to a random electrumx server in the electrumServers list
+ * with a certain network (doichain-mainnet,doichain-testnet,..)
+ *
+ * sets a couple of svelte store variables
+ *
+ * @param _network
+ * @returns {Promise<string>} the connected server url
+ */
 export const connectElectrum = async (_network) => {
 	if (!_network) return;
 	
@@ -64,3 +73,16 @@ export const connectElectrum = async (_network) => {
 
 	return _connectedServer;
 };
+
+export function getConnectionStatus(server) {
+	if (!server || server === 'offline' || server.includes('retry')) {
+		return {
+			isConnected: false,
+			serverName: server || 'No server connected'
+		};
+	}
+	return {
+		isConnected: true,
+		serverName: server
+	};
+}

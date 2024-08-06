@@ -2,9 +2,10 @@
    import "../app.css"
    import Pricing from "$lib/components/pricing.svelte"
    import { onMount } from "svelte";
+
    let title = `Names-On-Chain`
    let description = "A name registration service for Doichain";
-   const url = "ipns://names-on-chain.com" 
+   const url = "ipns://name-on-chain.com"
    let image = "/nasa-Q1p7bh3SHj8-unsplash.jpg"
    const favicon = "./favicon.ico"
    let menuOpen
