@@ -20,5 +20,5 @@ See: ipfs://QmZmvtgcxNof3QvKgC73SmbDawHCwxTnkMpWukTLokcgHS/
 npm run build
 ipfs add public/
 ```
-4. Run Brave browser an open ipfs url: ipfs://{cid of your ipfs add command}
+4. Run Brave browser and open ipfs url: ipfs://{cid of your ipfs add command}
 5. Checkout Step 2)
