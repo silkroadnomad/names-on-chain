@@ -3,8 +3,10 @@
 
 ## Description
 This 4-step workshop is intended to showcase how you can register and show Doichain names. 
-How to create and sign NameOp transactions via PSBT-QR-Codes and PSBT-File.
-PSBTs can be scanned (by DoiWallet) or imported (into the ElectrumDOI wallet).
+How to create and sign NameOp transactions via PSBT-QR-Codes and PSBT-Files.
+PSBTs can be broadcasted scanned (by DoiWallet) or imported (into the ElectrumDOI wallet).
+No private key necessary in the browser.
+
 See: ipfs://QmZmvtgcxNof3QvKgC73SmbDawHCwxTnkMpWukTLokcgHS/ 
 
 ### Step 1)
