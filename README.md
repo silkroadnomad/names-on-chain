@@ -32,4 +32,4 @@ ipfs add public/
    a) src/lib/doichain/nameShow.js
    b) what is a UTXO (unspent transaction output) 
    c) what are inputs and outputs of a transaction
-   b) response of a nameShow command (tx history of the nameOp )
+   b) response of a nameShow command (tx history of the nameOp)
