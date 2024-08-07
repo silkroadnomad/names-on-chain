@@ -7,9 +7,9 @@ How to create and sign NameOp transactions via PSBT-QR-Codes and PSBT-Files.
 PSBTs can be broadcasted scanned (by DoiWallet) or imported (into the ElectrumDOI wallet).
 No private key necessary in the browser.
 
-See: ipfs://QmZmvtgcxNof3QvKgC73SmbDawHCwxTnkMpWukTLokcgHS/ 
+See: ipfs://QmZmvtgcxNof3QvKgC73SmbDawHCwxTnkMpWukTLokcgHS/
 
-### Step 1)
+## Lesson 1)
 0. Clone this repo and run ```npm i``` 
 1. Connect to ElectrumX in src/routes/+layout.js
 2. Validate name to be registered in src/lib/components/pricing.svelte
@@ -22,3 +22,14 @@ ipfs add public/
 ```
 4. Run Brave browser and open ipfs url: ipfs://{cid of your ipfs add command}
 5. Checkout Step 2)
+
+## Goal of this lesson
+1. How to connect to Electrumx via secure websocket (wss) 
+   a) src/lib/doichain/connectElectrum.js
+   b) understanding the Electrum API https://electrum.readthedocs.io/en/latest/protocol.html
+   c) (optionally) setting up a Doichain Node and an ElectrumX Node with SSL
+2. NameOps, NameId, NameValue, Recipient (owner) 
+   a) src/lib/doichain/nameShow.js
+   b) what is a UTXO (unconfirmed transaction output) 
+   c) what are inputs and outputs of a transaction
+   b) response of a nameShow command (txs where the nameOp is stored)
