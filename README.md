@@ -30,6 +30,6 @@ ipfs add public/
    c) (optionally) setting up a Doichain Node and an ElectrumX Node with SSL
 2. NameOps, NameId, NameValue, Recipient (owner) 
    a) src/lib/doichain/nameShow.js
-   b) what is a UTXO (unconfirmed transaction output) 
+   b) what is a UTXO (unspent transaction output) 
    c) what are inputs and outputs of a transaction
-   b) response of a nameShow command (txs where the nameOp is stored)
+   b) response of a nameShow command (tx history of the nameOp )
