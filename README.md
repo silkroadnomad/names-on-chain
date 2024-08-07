@@ -1,5 +1,5 @@
 # Names-On-Chain 
-### A Doichain - PSBT Workshop
+# A Doichain - PSBT Workshop
 
 ## Description
 This 4-step workshop is intended to showcase how you can register and show Doichain names. 
