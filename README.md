@@ -18,16 +18,19 @@ See: ipfs://QmZmvtgcxNof3QvKgC73SmbDawHCwxTnkMpWukTLokcgHS/
 3. Build project and add to local ipfs node
 ```
 npm run build
-ipfs add public/
+mv public lesson01 
+ipfs add lesson01/
 ```
-4. Run Brave browser and open ipfs url: ipfs://{cid of your ipfs add command}
-5. Checkout Step 2)
+4. Run Brave browser and open ipfs url: ipfs://{cid of your ipfs add command} or
+   see our version: ipfs://QmZmvtgcxNof3QvKgC73SmbDawHCwxTnkMpWukTLokcgHS/ 
+5. Checkout branch lesson02)
 
 ## Goal of this lesson
 1. How to connect to Electrumx via secure websocket (wss) 
    a) src/lib/doichain/connectElectrum.js
    b) understanding the Electrum API https://electrum.readthedocs.io/en/latest/protocol.html
    c) (optionally) setting up a Doichain Node and an ElectrumX Node with SSL
+
 2. NameOps, NameId, NameValue, Recipient (owner) 
    a) src/lib/doichain/nameShow.js
    b) what is a UTXO (unspent transaction output) 
