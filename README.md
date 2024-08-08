@@ -19,9 +19,10 @@ See: ipfs://bafybeifj5jp3m3bhpjkls4smy34i4hxvbpasql7dbtkpcr65bawrs2js3u/
 ```
 npm run build
 mv public lesson01 
-ipfs add public/
+ipfs add lesson01/
 ```
-4. Run Brave browser and open ipfs url: ipfs://{cid of your ipfs add command} 
+4. Run Brave browser and open ipfs url: ipfs://{cid of your ipfs add command} or
+   see our version: ipfs://QmZmvtgcxNof3QvKgC73SmbDawHCwxTnkMpWukTLokcgHS/ 
 5. Checkout branch lesson02)
 
 ## Goal of this lesson
