@@ -54,3 +54,8 @@ ipfs add -r lesson02
 ```
 4. Run Brave browser and open ipfs url: ipfs://{cid of your ipfs add command} (or: ipfs://QmWnDdeb1oWgYZKuyfJm49Bp9G7FwjCTkYiCXoD2Skfsz9)
 5. Checkout branch lesson03)
+
+## Goal of this lesson
+1. Understanding UTXOS
+2. Scanning address-QR-Codes from DoiWallet
+3. Understanding expiration
