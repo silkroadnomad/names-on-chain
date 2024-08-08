@@ -2,9 +2,9 @@
 # A Doichain - PSBT Workshop
 
 ## Description
-This 4-step workshop is intended to showcase how you can register and show Doichain names. 
-How to create and sign NameOp transactions via PSBT-QR-Codes and PSBT-Files.
-PSBTs can be broadcasted scanned (by DoiWallet) or imported (into the ElectrumDOI wallet).
+This 4-step workshop is intended to showcase how you can register and show Doichain names
+and how to create and sign NameOp transactions via PSBT-QR-Codes and PSBT-Files.
+PSBTs can be scanned and broadcasted by DoiWallet or via file import into the ElectrumDOI wallet.
 No private key necessary in the browser.
 
 See: ipfs://bafybeifj5jp3m3bhpjkls4smy34i4hxvbpasql7dbtkpcr65bawrs2js3u/
@@ -21,7 +21,7 @@ npm run build
 mv public lesson01 
 ipfs add public/
 ```
-4. Run Brave browser and open ipfs url: ipfs://{cid of your ipfs add command}
+4. Run Brave browser and open ipfs url: ipfs://{cid of your ipfs add command} 
 5. Checkout branch lesson02)
 
 ## Goal of this lesson
