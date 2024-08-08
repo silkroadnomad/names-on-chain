@@ -2,20 +2,18 @@ import { nameShow } from "$lib/doichain/nameShow.js";
 import sb from "satoshi-bitcoin";
 import { debounce } from 'lodash';
 
-export const checkName = debounce((electrumClient, name, totalUtxoValue, totalAmount, callback) => {
-    _checkName(electrumClient, name, totalUtxoValue, totalAmount).then(result => {
+export const checkName = debounce((electrumClient, currentNameAddress , name, totalUtxoValue, totalAmount, callback) => {
+    _checkName(electrumClient, currentNameAddress, name, totalUtxoValue, totalAmount).then(result => {
         callback(result);
     });
 }, 300);
 
-export async function _checkName(electrumClient, _name, totalUtxoValue, totalAmount) {
+export async function _checkName(electrumClient, currentNameAddress, _name, totalUtxoValue, totalAmount) {
 
     let nameErrorMessage = '';
     let utxoErrorMessage = '';
     let isNameValid = true;
     let isUTXOAddressValid = true;
-
-    let currentNameAddress = '';
 
     if(!_name) {
         const nameErrorMessage = `No name provided`;
@@ -42,14 +40,15 @@ export async function _checkName(electrumClient, _name, totalUtxoValue, totalAmo
         else if(totalUtxoValue <= sb.toSatoshi(totalAmount)){
             utxoErrorMessage = `Funds on ${currentNameAddress} are insufficient for this Doichain name`;
             isUTXOAddressValid = false;
-            return { nameErrorMessage, utxoErrorMessage, isNameValid, isUTXOAddressValid }
+            return { currentNameAddress, nameErrorMessage, utxoErrorMessage, isNameValid, isUTXOAddressValid }
         }
         else {
-           return
+            isNameValid = true;
+            return { currentNameAddress, nameErrorMessage, utxoErrorMessage, isNameValid, isUTXOAddressValid }
         }
     } else {
         nameErrorMessage = `Name "${_name}" is too short`;
         isNameValid = false;
-        return { nameErrorMessage, currentNameAddress, utxoErrorMessage, isNameValid, isUTXOAddressValid };
+        return { currentNameAddress, nameErrorMessage, utxoErrorMessage, isNameValid, isUTXOAddressValid };
     }
 }
