@@ -16,7 +16,6 @@ export const getUTXOSFromAddress = async (electrumClient, utxoAddress) => {
 	let reversedHash = Buffer.from(hash.reverse()).toString("hex");
 
 	const utxos = await electrumClient.request('blockchain.scripthash.listunspent', [reversedHash]);
-	console.log("received from electrum",utxos)
 	for (let i = 0; i < utxos.length; i++) {
 		const utxo = utxos[i];
 		const fullTX = await getNameOpUTXOsOfTxHash(electrumClient, utxo.tx_hash, utxo.tx_pos);

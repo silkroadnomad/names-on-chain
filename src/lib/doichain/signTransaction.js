@@ -18,7 +18,6 @@ import { VERSION } from "./doichain.js";
  * @throws {Error} Implicitly throws an error if any of the required parameters are missing or invalid.
  */
 export function signTransaction(_utxoAddresses, _name, _network, _storageFee, _recipientAddress, _changeAddress, doichainAddress) {
-    console.log("signTransaction")
     if(!_name || _utxoAddresses.length === 0 || !_recipientAddress || !_changeAddress) {
         return { error: "Missing required parameters" };
     }
@@ -52,20 +51,21 @@ export function signTransaction(_utxoAddresses, _name, _network, _storageFee, _r
     });
 
     if(_name) {
-        const opCodesStackScript = getNameOPStackScript(_name, 'empty', _recipientAddress, _network);
-        psbt.setVersion(VERSION); // for name transactions
-        psbt.addOutput({
-            script: opCodesStackScript,
-            value: _storageFee
-        });
-        totalOutputAmount = totalOutputAmount + _storageFee;
+        try {
+            const opCodesStackScript = getNameOPStackScript(_name, 'empty', _recipientAddress, _network);
+            psbt.setVersion(VERSION); // for name transactions
+            psbt.addOutput({
+                script: opCodesStackScript,
+                value: _storageFee
+            });
+            totalOutputAmount = totalOutputAmount + _storageFee;
+        }catch( ex ) { console.error(ex) }
     }
 
     const feeRate = 34 * 500; // TODO: get feeRate from an API
     transactionFee = (_utxoAddresses.length + 1) * 180 + 3 * feeRate;
     changeAmount = totalInputAmount - totalOutputAmount - transactionFee;
     let totalAmount = totalOutputAmount + transactionFee;
-    console.log("totalAmount",totalAmount)
     if(changeAmount < 0) {
         return {
             error: `Funds on ${doichainAddress} are insufficient for this Doichain name`,
