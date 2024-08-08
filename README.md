@@ -28,8 +28,19 @@ ipfs add public/
    a) src/lib/doichain/connectElectrum.js
    b) understanding the Electrum API https://electrum.readthedocs.io/en/latest/protocol.html
    c) (optionally) setting up a Doichain Node and an ElectrumX Node with SSL
+
 2. NameOps, NameId, NameValue, Recipient (owner) 
    a) src/lib/doichain/nameShow.js
    b) what is a UTXO (unspent transaction output) 
    c) what are inputs and outputs of a transaction
    b) response of a nameShow command (tx history of the nameOp)
+
+## Lesson 2)
+1. Add an address input below the name input 
+   - src/lib/components/pricing.svelte
+2. Gather UTXOs and NameOps of this address (show name and expiration)
+   - src/lib/doichain/utxoHelpers.js
+3. Add an QR-Code scanner to scan an address
+   - use src/lib/doichain/ScanModal.svelte
+4. Show registered NameOps with expiration block
+   - src/lib/components/pricing.svelte
