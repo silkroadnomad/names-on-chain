@@ -7,7 +7,7 @@ How to create and sign NameOp transactions via PSBT-QR-Codes and PSBT-Files.
 PSBTs can be broadcasted scanned (by DoiWallet) or imported (into the ElectrumDOI wallet).
 No private key necessary in the browser.
 
-See: ipfs://QmZmvtgcxNof3QvKgC73SmbDawHCwxTnkMpWukTLokcgHS/
+See: ipfs://bafybeifj5jp3m3bhpjkls4smy34i4hxvbpasql7dbtkpcr65bawrs2js3u/
 
 ## Lesson 1)
 0. Clone this repo and run ```npm i``` 
@@ -18,10 +18,11 @@ See: ipfs://QmZmvtgcxNof3QvKgC73SmbDawHCwxTnkMpWukTLokcgHS/
 3. Build project and add to local ipfs node
 ```
 npm run build
+mv public lesson01 
 ipfs add public/
 ```
 4. Run Brave browser and open ipfs url: ipfs://{cid of your ipfs add command}
-5. Checkout Step 2)
+5. Checkout branch lesson02)
 
 ## Goal of this lesson
 1. How to connect to Electrumx via secure websocket (wss) 
@@ -44,3 +45,11 @@ ipfs add public/
    - use src/lib/doichain/ScanModal.svelte
 4. Show registered NameOps with expiration block
    - src/lib/components/pricing.svelte
+5. Build project and add to local ipfs node
+```
+npm run build
+mv public lesson02
+ipfs add -r lesson02
+```
+4. Run Brave browser and open ipfs url: ipfs://{cid of your ipfs add command} (or: ipfs://QmWnDdeb1oWgYZKuyfJm49Bp9G7FwjCTkYiCXoD2Skfsz9)
+5. Checkout branch lesson03)
