@@ -62,6 +62,8 @@ ipfs add -r lesson02
 
 ### Lesson 3)
 1. Adding a feature box
+   - src/lib/components/pricing.svelte
 2. Adding a transaction calculation box (storage fee, mining fee, change amount, total amount)
-3. Adding BC-QR Code supported by DoiWallet
-4. Testing a legacy / segwit transaction
+   - src/lib/components/pricing.svelte
+3. Generating a PSBT (partially signed Bitcoin transaction)
+   - src/lib/components/pricing.svelte
