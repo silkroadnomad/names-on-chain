@@ -1,7 +1,11 @@
 <script>
     import { getConnectionStatus } from "../doichain/connectElectrum.js"
     import { checkName } from "$lib/doichain/nameValidation.js";
-    import { electrumClient, connectedServer } from "../doichain/doichain-store.js";
+    import { getUtxosAndNamesOfAddress } from "$lib/doichain/utxoHelpers.js";
+
+    import { electrumClient, connectedServer, scanOpen } from "../doichain/doichain-store.js";
+    import sb from "satoshi-bitcoin";
+    import ScanModal from "$lib/doichain/ScanModal.svelte";
 
     /**
      * The name currently typed in the name input
@@ -32,6 +36,22 @@
     let totalUtxoValue = 0, totalAmount = 0;
 
     /**
+     * Array of name operation transactions associated with the current address
+     * @type {Array<string>}
+     */
+    let nameOpTxs = [];
+    /**
+     * Indicates whether the UTXO address is valid
+     * @type {boolean}
+     */
+    let isUTXOAddressValid = true;
+    /**
+     * Error message for UTXO address validation issues
+     * @type {string}
+     */
+    let utxoErrorMessage = '';
+
+    /**
      * Check a name, debounce every keyboard typing, return local variables by callback
      * @param result
      */
@@ -54,8 +74,24 @@
      */
     $: name ? checkName($electrumClient, name, totalUtxoValue, totalAmount, nameCheckCallback) : null;
 
+    /**
+     * If we have a connection to Electrumx and a doichainAddress get UTXOs without and with NameOps.
+     * - UTXOs, we need to calculate the total amount of all inputs to spend
+     * - Multiple NameOp UTXOs are possible (their values are burned and un spendable
+     */
+    $: {
+        if(isConnected && doichainAddress){
+            getUtxosAndNamesOfAddress($electrumClient, doichainAddress).then((retObj) => {
+                nameOpTxs = retObj.nameOpTxs
+                totalUtxoValue = retObj.totalUtxoValue
+            })
+        }
+    }
 </script>
 
+{#if $scanOpen}
+    <ScanModal bind:scanOpen={ $scanOpen } bind:scanData={ doichainAddress } />
+{/if}
 <div class="bg-white py-24 sm:py-32">
     <div class="mx-auto max-w-7xl px-6 lg:px-8">
         <div class="mx-auto max-w-2xl sm:text-center">
@@ -101,6 +137,45 @@
                     {:else}
                     <p class="mt-2 text-sm text-red-600" id="name-error">offline - please check internet connection or reload browser</p>
                 {/if}
+                <div>
+                    <label for="email" class="block text-sm font-medium leading-6 text-gray-900">Doichain Registration Address</label>
+                    <div class="relative mt-2 rounded-md shadow-sm flex items-center">
+                        <input bind:value={doichainAddress}
+                               on:change={() => checkName($electrumClient, name, totalUtxoValue, totalAmount, nameCheckCallback)}
+                               type="address" name="address" id="address"
+                               class="{isNameValid?'block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset sm:text-sm sm:leading-6':'block w-full rounded-md border-0 py-1.5 pr-10 text-red-900 ring-1 ring-inset ring-red-300 placeholder:text-red-300 focus:ring-2 focus:ring-inset focus:ring-red-500 sm:text-sm sm:leading-6'}"
+                               placeholder="address"
+                               aria-invalid="{isUTXOAddressValid}"
+                               aria-describedby="name-error">
+                        {#if !isUTXOAddressValid}
+                            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
+                                <svg class="h-5 w-5 text-red-500" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-5a.75.75 0 01.75.75v4.5a.75.75 0 01-1.5 0v-4.5A.75.75 0 0110 5zm0 10a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
+                                </svg>
+                            </div>
+                        {/if}
+                        <button on:click={ () => { $scanOpen = true }} class="ml-2"><svg class="h-8 w-8 text-orange-600"  width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">  <path stroke="none" d="M0 0h24v24H0z"/>  <path d="M4 7v-1a2 2 0 0 1 2 -2h2" />  <path d="M4 17v1a2 2 0 0 0 2 2h2" />  <path d="M16 4h2a2 2 0 0 1 2 2v1" />  <path d="M16 20h2a2 2 0 0 0 2 -2v-1" />  <line x1="5" y1="12" x2="19" y2="12" /></svg></button>
+                    </div>
+
+                    {#if !isUTXOAddressValid}
+                        <p class="mt-2 text-sm text-red-600" id="name-error"><b>Total UTXO value: { sb.toBitcoin(totalUtxoValue) }</b> {utxoErrorMessage}</p>
+                    {:else}
+                        <p class="mt-2 text-sm text-gray red-600" id="name-error">Total UTXO value: { sb.toBitcoin(totalUtxoValue) }</p>
+                        {#if nameOpTxs.length > 0}
+                            <div class="mt-4">
+                                <h4 class="text-sm font-medium text-gray-900 mb-2">Registered Names on Doichain Address:</h4>
+                                <div class="flex flex-wrap gap-2">
+                                    {#each nameOpTxs as nameOp}
+                                        <span class="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-blue-100 text-blue-800">
+                                            {nameOp.name} (expires:{nameOp.expires})
+                                        </span>
+                                    {/each}
+                                </div>
+                            </div>
+                        {/if}
+                    {/if}
+                </div>
+                <p>&nbsp;</p>
             </div>
         </div>
     </div>
