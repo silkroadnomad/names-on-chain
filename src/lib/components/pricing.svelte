@@ -3,10 +3,12 @@
     import { checkName } from "$lib/doichain/nameValidation.js";
     import { getUtxosAndNamesOfAddress } from "$lib/doichain/utxoHelpers.js";
     import { electrumClient, connectedServer, scanOpen } from "../doichain/doichain-store.js";
+    import { renderBBQR, renderBCUR } from "$lib/doichain/renderQR.js";
     import ScanModal from "$lib/doichain/ScanModal.svelte";
     import { DOICHAIN } from "$lib/doichain/doichain.js";
     import { signTransaction } from "$lib/doichain/signTransaction.js";
     import sb from "satoshi-bitcoin";
+    import { onDestroy } from "svelte";
 
     /**
      * The name currently typed in the name input
@@ -93,22 +95,125 @@
         }
     }
 
+    /**
+     * @type {number} storageFee - The fee for storing the name on the Doichain network, in swartz. Default is 1,000,000 (0.01 DOI).
+     */
     let storageFee = 1000000;
+
+    /**
+     * @type {number} transactionFee - The fee for processing the transaction on the network, in swartz. Initially set to 0 and calculated later.
+     */
     let transactionFee = 0;
+
+    /**
+     * @type {number} changeAmount - The amount of DOI to be returned to the sender's address after the transaction, in swartz. Initially set to 0 and calculated later.
+     */
     let changeAmount = 0;
-    $:{
+
+    /**
+     * @type {string|string[]} qrCodeData - The data to be encoded in the QR code. Can be a string for a single QR code or an array of strings for animated QR codes.
+     */
+    let qrCodeData;
+
+    /**
+     * @type {string} qrCode - The current QR code SVG string to be displayed. Used for animated QR codes.
+     */
+    let qrCode;
+
+    /**
+     * @type {boolean} bbqr - A flag to determine whether to use BBQR (Binary Bitcoin QR) format. Default is false.
+     */
+    let bbqr = false
+    
+    /**
+     * Reactive block for handling name registration transaction and QR code generation.
+     * 
+     * This block is triggered whenever `name` or `isNameValid` changes.
+     * It performs the following actions:
+     * 1. Calls `signTransaction` to create a PSBT (Partially Signed Bitcoin Transaction).
+     * 2. Updates transaction details (fees, amounts) based on the result.
+     * 3. Generates either a BBQR or BCUR QR code for the transaction.
+     * 
+     * @reactive
+     * @depends {string} name - The name to be registered.
+     * @depends {boolean} isNameValid - Whether the name is valid for registration.
+     * @depends {Array<Object>} utxoAddresses - UTXO addresses for the transaction.
+     * @depends {Object} DOICHAIN - Doichain network configuration.
+     * @depends {number} storageFee - Fee for storing the name on the network.
+     * @depends {string} doichainAddress - The Doichain address for the transaction.
+     * @depends {boolean} bbqr - Flag to determine QR code format (BBQR or BCUR).
+     * 
+     * @affects {string} utxoErrorMessage - Error message if transaction creation fails.
+     * @affects {string} psbtBaseText - Base64 encoded PSBT.
+     * @affects {number} transactionFee - Calculated transaction fee.
+     * @affects {number} changeAmount - Calculated change amount.
+     * @affects {number} totalAmount - Total transaction amount.
+     * @affects {string|string[]} qrCodeData - Generated QR code data.
+     * 
+     * @throws {Error} Logs error to console if QR code generation fails.
+     */
+    $: {
         if(name && isNameValid) {
             const result = signTransaction(utxoAddresses, name, DOICHAIN, storageFee, doichainAddress, doichainAddress, doichainAddress);
             if (result.error) {
                 utxoErrorMessage = result.error;
+                qrCodeData = undefined;
             } else {
                 psbtBaseText = result.psbtBase64;
                 transactionFee = result.transactionFee;
                 changeAmount = result.changeAmount;
                 totalAmount = result.totalAmount;
+
+                if(bbqr)
+                    renderBBQR(psbtBaseText).then(imgurl => qrCodeData = imgurl)
+                else
+                    renderBCUR(psbtBaseText).then(_qr => {
+                        qrCodeData = _qr;
+                        displayQrCodes();
+                    }).catch(error => {
+                        console.error('Error generating QR code:', error);
+                        qrCodeData = undefined;
+                    });
             }
         }
     }
+
+    /**
+     * @type {number|null} animationTimeout - Holds the timeout ID for the QR code animation.
+     */
+    let animationTimeout;
+
+    /**
+     * @type {number} currentSvgIndex - The index of the currently displayed SVG in the QR code animation.
+     */
+    let currentSvgIndex;
+
+    /**
+     * Initializes and starts the QR code animation.
+     * Resets the animation if it's already running.
+     */
+    function displayQrCodes() {
+        currentSvgIndex = 0;
+        if (animationTimeout) clearTimeout(animationTimeout);
+        animateQrCodes();
+    }
+
+    /**
+     * Animates through the QR code SVGs.
+     * This function is called recursively to create a loop through all QR code frames.
+     * 
+     * @throws {Error} Implicitly throws an error if qrCodeData is not an array or is empty.
+     */
+    function animateQrCodes() {
+        qrCode = qrCodeData[currentSvgIndex];
+        currentSvgIndex = (currentSvgIndex + 1) % qrCodeData.length;
+        // console.log("currentSvgIndex", currentSvgIndex);
+        animationTimeout = setTimeout(animateQrCodes, 300);
+    }
+    
+    onDestroy(() => {
+        if (animationTimeout) clearTimeout(animationTimeout);
+    });
 
     $: totalUtxoValue = utxoAddresses.reduce((sum, utxo) => sum + utxo.value, 0);
 </script>
@@ -118,12 +223,9 @@
 {/if}
 <div class="bg-white py-24 sm:py-32">
     <div class="mx-auto max-w-7xl px-6 lg:px-8">
-        <div class="flex flex-col lg:flex-row lg:space-x-8">
-            <div class="lg:w-2/3">
                 <div class="mx-auto max-w-2xl sm:text-center">
                     <h2  class="text-3xl font-bold tracking-tight sm:text-4xl fade-red-to-green {isConnected ? 'connected' : ''}">Names-On-Chain</h2>
-                    <h2  class="font-bold tracking-tight sm:text-1xl fade-red-to-green {isConnected ? 'connected' : ''}">A Doichain Name Registration Transaction Generator</h2>
-                    <h3 class="text-sm font-semibold tracking-tight fade-red-to-green {isConnected ? 'connected' : 'blinking'} ">{serverName}</h3>
+                    <h2  class="font-bold tracking-tight sm:text-1xl fade-red-to-green {isConnected ? 'connected' : 'blinking'} ">{serverName}</h2>
                 </div>
                 <div class="mx-auto mt-16 max-w-2xl rounded-3xl ring-1 ring-gray-200 sm:mt-20 lg:mx-0 lg:flex lg:max-w-none">
                     <div class="p-8 sm:p-10 lg:flex-auto">
@@ -256,35 +358,52 @@
                                 Create offer on marketplace (coming soon!)
                             </li>
                         </ul>
-
-                    </div>
-                </div>
             </div>
-
-            <div class="lg:w-1/3 mt-8 lg:mt-0">
-                <div class="rounded-2xl bg-gray-50 py-10 text-left ring-1 ring-inset ring-gray-900/5 lg:flex lg:flex-col lg:justify-start lg:py-16">
-                    <div class="mx-auto max-w-xs px-8">
-                        <p class="text-base font-semibold text-gray-600">Register Doichain Name for 31,968 blocks (approximately 222 days)</p>
-                        <div class="mt-6">
-                            <div class="flex justify-between mt-2">
-                                <span class="text-sm font-bold tracking-tight text-gray-900">Storage Fee:</span>
-                                <span class="text-sm font-semibold leading-6 tracking-wide text-gray-600">{sb.toBitcoin(storageFee)} DOI</span>
-                            </div>
-                            <div class="flex justify-between mt-2">
-                                <span class="text-sm font-bold tracking-tight text-gray-900">Mining Fee:</span>
-                                <span class="text-sm font-semibold leading-6 tracking-wide text-gray-600">{sb.toBitcoin(transactionFee)} DOI</span>
-                            </div>
-                            <div class="flex justify-between">
-                                <span class="text-sm font-bold tracking-tight text-gray-900">Total Amount:</span>
-                                <span class="text-sm font-semibold leading-6 tracking-wide text-gray-600">{sb.toBitcoin(totalAmount)} DOI</span>
-                            </div>
-                            <div class="flex justify-between mt-2">
-                                <span class="text-sm font-bold tracking-tight text-gray-900">Change:</span>
-                                <span class="text-sm font-semibold leading-6 tracking-wide text-gray-600">{sb.toBitcoin(changeAmount)} DOI</span>
-                            </div>
+            <div class="lg:w-1/3 mt-8 lg:mt-0 rounded-2xl bg-gray-50 py-10 text-left ring-1 ring-inset ring-gray-900/5 lg:flex lg:flex-col lg:justify-start lg:py-16">
+                <div class="mx-auto max-w-xs px-8">
+                    <p class="text-base font-semibold text-gray-600">Register Doichain Name for 31,968 blocks (approximately 222 days)</p>
+                    <div class="mt-6">
+                        <div class="flex justify-between mt-2">
+                            <span class="text-sm font-bold tracking-tight text-gray-900">Storage Fee:</span>
+                            <span class="text-sm font-semibold leading-6 tracking-wide text-gray-600">{sb.toBitcoin(storageFee)} DOI</span>
                         </div>
-                        <div id="qr-container"></div>
+                        <div class="flex justify-between mt-2">
+                            <span class="text-sm font-bold tracking-tight text-gray-900">Mining Fee:</span>
+                            <span class="text-sm font-semibold leading-6 tracking-wide text-gray-600">{sb.toBitcoin(transactionFee)} DOI</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-sm font-bold tracking-tight text-gray-900">Total Amount:</span>
+                            <span class="text-sm font-semibold leading-6 tracking-wide text-gray-600">{sb.toBitcoin(totalAmount)} DOI</span>
+                        </div>
+                        <div class="flex justify-between mt-2">
+                            <span class="text-sm font-bold tracking-tight text-gray-900">Change:</span>
+                            <span class="text-sm font-semibold leading-6 tracking-wide text-gray-600">{sb.toBitcoin(changeAmount)} DOI</span>
+                        </div>
                     </div>
+                    <div id="qr-container"></div>
+                    {#if qrCodeData && psbtBaseText && isNameValid}
+                        {@html qrCode}
+                        <div class="mt-4">
+                            <label for="name" class="block text-sm font-medium leading-6 text-gray-900">PSBT File</label>
+                            <div class="relative mt-2 rounded-md shadow-sm">
+                                <textarea bind:value={psbtBaseText} rows="4" name="comment" id="comment"
+                                      class="{isNameValid?'block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset sm:text-sm sm:leading-6':'block w-full rounded-md border-0 py-1.5 pr-10 text-red-900 ring-1 ring-inset ring-red-300 placeholder:text-red-300 focus:ring-2 focus:ring-inset focus:ring-red-500 sm:text-sm sm:leading-6'}"
+                                      placeholder="psbt file"
+                                      aria-invalid="{!psbtBaseText}"
+                                      aria-describedby="name-error"/>
+                                        {#if !psbtBaseText}
+                                            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
+                                                <svg class="h-5 w-5 text-red-500" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-5a.75.75 0 01.75.75v4.5a.75.75 0 01-1.5 0v-4.5A.75.75 0 0110 5zm0 10a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
+                                                </svg>
+                                            </div>
+                                        {/if}
+                            </div>
+                            {#if !psbtBaseText}
+                                <p class="mt-2 text-sm text-red-600" id="name-error">{nameErrorMessage}</p>
+                            {/if}
+                        </div>
+                    {/if}
                 </div>
             </div>
         </div>

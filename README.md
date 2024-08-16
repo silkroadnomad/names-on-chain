@@ -67,3 +67,36 @@ ipfs add -r lesson02
    - src/lib/components/pricing.svelte
 3. Generating a PSBT (partially signed Bitcoin transaction)
    - src/lib/components/pricing.svelte
+
+### Lesson 4)
+1. Implementing QR code generation for PSBTs
+   - src/lib/components/pricing.svelte
+2. Adding support for BBQR and BCUR formats
+   - src/lib/components/pricing.svelte
+3. Creating an animated QR code display
+   - src/lib/components/pricing.svelte
+4. Handling transaction signing and error cases
+   - src/lib/doichain/signTransaction.js
+5. Updating the UI to display transaction details and QR codes
+   - src/lib/components/pricing.svelte
+
+## Goal of this lesson
+1. Understanding different QR code formats for cryptocurrency transactions (BBQR and BCUR)
+2. Implementing animated QR codes for improved user experience
+3. Handling and displaying transaction details in the UI
+4. Error handling in transaction creation and QR code generation
+
+## Steps to complete
+1. Add QR code generation logic using BBQR and BCUR formats
+2. Create functions for animating QR codes (`displayQrCodes` and `animateQrCodes`)
+3. Update the reactive block to handle transaction signing and QR code generation
+4. Modify the UI to display transaction details and the generated QR code
+5. Implement error handling for transaction creation and QR code generation
+6. Test the functionality with various inputs and edge cases
+
+## Key concepts
+- PSBT (Partially Signed Bitcoin Transactions)
+- QR code formats for cryptocurrency transactions (BBQR and BCUR)
+- Animated QR codes for multi-part data
+- Reactive programming in Svelte
+- Error handling in asynchronous operations
