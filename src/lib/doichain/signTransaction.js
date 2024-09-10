@@ -1,6 +1,7 @@
 import { Psbt } from "bitcoinjs-lib";
 import { getNameOPStackScript } from "./getNameOPStackScript.js";
 import { VERSION } from "./doichain.js";
+import {getTransactionFee} from "$lib/doichain/getTransactionFee.js";
 
 /**
  * Creates and signs a Partially Signed Bitcoin Transaction (PSBT) for registering a Doichain name.
@@ -52,7 +53,7 @@ export function signTransaction(_utxoAddresses, _name, _network, _storageFee, _r
 
     if(_name) {
         try {
-            const opCodesStackScript = getNameOPStackScript(_name, 'empty', _recipientAddress, _network);
+            const opCodesStackScript = getNameOPStackScript(_name, ' ', _recipientAddress, _network);
             psbt.setVersion(VERSION); // for name transactions
             psbt.addOutput({
                 script: opCodesStackScript,
@@ -62,13 +63,12 @@ export function signTransaction(_utxoAddresses, _name, _network, _storageFee, _r
         }catch( ex ) { console.error(ex) }
     }
 
-    const feeRate = 34 * 500; // TODO: get feeRate from an API
-    transactionFee = (_utxoAddresses.length + 1) * 180 + 3 * feeRate;
+    transactionFee = getTransactionFee(_utxoAddresses.length)
     changeAmount = totalInputAmount - totalOutputAmount - transactionFee;
     let totalAmount = totalOutputAmount + transactionFee;
     if(changeAmount < 0) {
         return {
-            error: `Funds on ${doichainAddress} are insufficient for this Doichain name`,
+            error: `Funds on ${doichainAddress} are insufficient for this name while signing transaction`,
             isUTXOAddressValid: false
         };
     }

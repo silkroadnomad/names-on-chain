@@ -2,13 +2,14 @@
     import { getConnectionStatus } from "../doichain/connectElectrum.js"
     import { checkName } from "$lib/doichain/nameValidation.js";
     import { getUtxosAndNamesOfAddress } from "$lib/doichain/utxoHelpers.js";
-    import { electrumClient, connectedServer, scanOpen } from "../doichain/doichain-store.js";
+    import {electrumClient, connectedServer, scanOpen, network} from "../doichain/doichain-store.js";
     import { renderBBQR, renderBCUR } from "$lib/doichain/renderQR.js";
     import ScanModal from "$lib/doichain/ScanModal.svelte";
-    import { DOICHAIN } from "$lib/doichain/doichain.js";
+    // import { DOICHAIN } from "$lib/doichain/doichain.js";
     import { signTransaction } from "$lib/doichain/signTransaction.js";
     import sb from "satoshi-bitcoin";
     import { onDestroy } from "svelte";
+    import { generateAtomicNameTradingPSBT } from "$lib/doichain/atomicNameTrading.js";
 
     /**
      * The name currently typed in the name input
@@ -19,6 +20,11 @@
      * Is everything ok with the name inside the name input?
      */
     let isNameValid = true;
+
+    /**
+     * Is the name already to be found on the blockchain
+     */
+    let nameExists = true
 
     /**
      * If there is an issue with the name, this variable contains the error
@@ -56,15 +62,33 @@
 
     let utxoAddresses = [];
     let psbtBaseText;
+    let scanOpenFunding = false
+    let fundingUTXOAddress = localStorage.getItem('fundingUTXOAddress') || 'N8YtTBMRqMq9E45VMT9KVbfwt5X5oLD4vt';
+    $:console.log("fundingUTXOAddress",fundingUTXOAddress)
+    /**
+     * Indicates whether the funding UTXO address is valid
+     * @type {boolean}
+     */
+    let isFundingUTXOAddressValid = true;
+    let transferPrice = 100
+    let fundingTotalAmount = 0
+    let fundingTotalUtxoValue = 0
+    let fundingUtxoAddresses = []
+    let buyOfferValid = false
+    $:fundingTotalAmount=transferPrice+storageFee //+miningFee TODO
+
 
     /**
      * Check a name, debounce every keyboard typing, return local variables by callback
      * @param result
      */
     export async function nameCheckCallback(result) {
+        console.log("result",result)
         doichainAddress = result.currentNameAddress
+        nameExists = result.nameExists
         isNameValid = result.isNameValid
         nameErrorMessage  = result.nameErrorMessage
+        isUTXOAddressValid = result.isUTXOAddressValid
     }
 
     /**
@@ -91,6 +115,23 @@
                 nameOpTxs = retObj.nameOpTxs
                 totalUtxoValue = retObj.totalUtxoValue
                 utxoAddresses = retObj.utxoAddresses
+            })
+        }
+    }
+
+    /**
+     * If we have a connection to Electrumx and a doichainAddress get UTXOs without and with NameOps.
+     * - UTXOs, we need to calculate the total amount of all inputs to spend
+     * - Multiple NameOp UTXOs are possible (their values are burned and un spendable
+     */
+    $: {
+        if(isConnected && fundingUTXOAddress){
+            console.log("getting utxos")
+            getUtxosAndNamesOfAddress($electrumClient, fundingUTXOAddress).then((retObj) => {
+                console.log("got new utxos and stuff",retObj)
+                // nameOpTxs = retObj.nameOpTxs //we are not interested in the nameOps of the funding address
+                fundingTotalUtxoValue = retObj.totalUtxoValue
+                fundingUtxoAddresses = retObj.utxoAddresses
             })
         }
     }
@@ -124,7 +165,14 @@
      * @type {boolean} bbqr - A flag to determine whether to use BBQR (Binary Bitcoin QR) format. Default is false.
      */
     let bbqr = false
-    
+
+    /**
+     * @type {boolean} ownerOfName - If the current name is already on chain, it could be the user is the owner of it.
+     * If he is the owner he can create a PSPT-part (1) to sell the name.
+     * If he is NOT the owner he, could create a PSBT-part to buy the name (only if Part 1 is known)
+     */
+    let ownerOfName = false
+
     /**
      * Reactive block for handling name registration transaction and QR code generation.
      * 
@@ -154,8 +202,10 @@
      */
     $: {
         if(name && isNameValid) {
-            const result = signTransaction(utxoAddresses, name, DOICHAIN, storageFee, doichainAddress, doichainAddress, doichainAddress);
+            const result = signTransaction(utxoAddresses, name, $network, storageFee, doichainAddress, doichainAddress, doichainAddress);
+            console.log("signTransaction:result",result)
             if (result.error) {
+                console.log("error",result)
                 utxoErrorMessage = result.error;
                 qrCodeData = undefined;
             } else {
@@ -214,12 +264,41 @@
     onDestroy(() => {
         if (animationTimeout) clearTimeout(animationTimeout);
     });
-
+    $: console.log("transferPrice",transferPrice)
     $: totalUtxoValue = utxoAddresses.reduce((sum, utxo) => sum + utxo.value, 0);
+
+
+    $: {
+        generateAtomicNameTradingPSBT(name, fundingUtxoAddresses, nameOpTxs, ownerOfName, nameExists, transferPrice, storageFee, $network).then( (_psbtBaseText) => {
+                if(bbqr)
+                    renderBBQR(_psbtBaseText).then(imgurl => qrCodeData = imgurl)
+                else
+                    renderBCUR(_psbtBaseText).then(_qr => {
+                        qrCodeData = _qr;
+                        buyOfferValid = true
+                        displayQrCodes();
+                    }).catch(error => {
+                        console.error('Error generating QR code:', error);
+                        qrCodeData = undefined;
+                    })
+            }
+        )
+
+        // transactionFee = result.transactionFee;
+        // changeAmount = result.changeAmount;
+        // totalAmount = result.totalAmount;
+
+
+    }
+
 </script>
 
 {#if $scanOpen}
     <ScanModal bind:scanOpen={ $scanOpen } bind:scanData={ doichainAddress } />
+{/if}
+
+{#if scanOpenFunding}
+    <ScanModal bind:scanOpen={ scanOpenFunding } bind:scanData={ fundingUTXOAddress } />
 {/if}
 <div class="bg-white py-24 sm:py-32">
     <div class="mx-auto max-w-7xl px-6 lg:px-8">
@@ -304,60 +383,62 @@
                             {/if}
                         </div>
                         <p>&nbsp;</p>
-                        <div class="mt-10 flex items-center gap-x-4">
-                            <h4 class="flex-none text-sm font-semibold leading-6 text-indigo-600">Features:</h4>
-                            <div class="h-px flex-auto bg-gray-100"></div>
-                        </div>
-                        <ul role="list" class="mt-8 grid grid-cols-1 gap-4 text-sm leading-6 text-gray-600 sm:grid-cols-2 sm:gap-6">
-                            <li class="flex gap-x-3">
-                                <svg class="h-6 w-5 flex-none text-indigo-600" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                                    <path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd" />
-                                </svg>
-                                Serverless
-                            </li>
-                            <li class="flex gap-x-3">
-                                <svg class="h-6 w-5 flex-none text-indigo-600" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                                    <path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd" />
-                                </svg>
-                                No Data Processing
-                            </li>
-                            <li class="flex gap-x-3">
-                                <svg class="h-6 w-5 flex-none text-indigo-600" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                                    <path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd" />
-                                </svg>
-                                No Tracking
-                            </li>
-                            <li class="flex gap-x-3">
-                                <svg class="h-6 w-5 flex-none text-indigo-600" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                                    <path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd" />
-                                </svg>
-                                IPFS only
-                            </li>
-                            <li class="flex gap-x-3">
-                                <svg class="h-6 w-5 flex-none text-indigo-600" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                                    <path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd" />
-                                </svg>
-                                Scan PSBT QR-code or Copy & Paste PSBT file
-                            </li>
-                            <li class="flex gap-x-3">
-                                <svg class="h-6 w-5 flex-none text-indigo-600" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                                    <path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd" />
-                                </svg>
-                                Payment via DoiWallet or ElectrumDoi
-                            </li>
-                            <li class="flex gap-x-3">
-                                <svg class="h-6 w-5 flex-none text-indigo-600" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                                    <path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd" />
-                                </svg>
-                                auto renewal (coming soon)
-                            </li>
-                            <li class="flex gap-x-3">
-                                <svg class="h-6 w-5 flex-none text-indigo-600" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                                    <path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd" />
-                                </svg>
-                                Create offer on marketplace (coming soon!)
-                            </li>
-                        </ul>
+                        {#if nameExists}
+                            <div class="flex items-center justify-between">
+                              <span class="flex flex-grow flex-col">
+                                <span class="text-sm font-medium leading-6 text-gray-900" id="availability-label">{ownerOfName?'I am owner of that name. I make a sell offer':'I am NOT the owner of the name. I make a buy offer'}</span>
+                                <span class="text-sm text-gray-500" id="availability-description">{ownerOfName?'Create the PSBT-part (1) to sell the name':'create a PSBT-part to buy the name (only if Part 1 is known)'}</span>
+                              </span>
+                                <button on:click={() => ownerOfName=!ownerOfName} type="button" class="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent {ownerOfName?'bg-indigo-600':'bg-gray-200'} transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:ring-offset-2" role="switch" aria-checked="false" aria-labelledby="availability-label" aria-describedby="availability-description">
+                                  <span aria-hidden="true" class="pointer-events-none inline-block h-5 w-5 {ownerOfName?'translate-x-5':'translate-x-0'} transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out"></span>
+                                </button>
+                            </div>
+                            <p>&nbsp;</p>
+                            {#if !ownerOfName}
+                                <label for="email" class="block text-sm font-medium leading-6 text-gray-900">Doichain Address of funds to buy name</label>
+                                <div class="relative mt-2 rounded-md shadow-sm flex items-center">
+                                    <input bind:value={fundingUTXOAddress}
+                                           type="fundingUTXOAddress" name="fundingUTXOAddress" id="fundingUTXOAddress"
+                                           on:change={() => checkName($electrumClient, fundingUTXOAddress, name, fundingTotalUtxoValue, fundingTotalAmount,
+                                           (result) => {
+                                               console.log("fundingResult",result)
+                                               isFundingUTXOAddressValid=result.isUTXOAddressValid
+                                           })}
+                                           class="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset sm:text-sm sm:leading-6':'block w-full rounded-md border-0 py-1.5 pr-10 text-red-900 ring-1 ring-inset ring-red-300 placeholder:text-red-300 focus:ring-2 focus:ring-inset focus:ring-red-500 sm:text-sm sm:leading-6"
+                                           placeholder="address"
+                                           aria-invalid="{isFundingUTXOAddressValid}"
+                                           aria-describedby="name-error">
+
+                                            {#if !isFundingUTXOAddressValid}
+                                                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
+                                                    <svg class="h-5 w-5 text-red-500" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-5a.75.75 0 01.75.75v4.5a.75.75 0 01-1.5 0v-4.5A.75.75 0 0110 5zm0 10a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
+                                                    </svg>
+                                                </div>
+                                            {/if}
+
+                                    <button on:click={ () => { scanOpenFunding = true }} class="ml-2"><svg class="h-8 w-8 text-orange-600"  width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">  <path stroke="none" d="M0 0h24v24H0z"/>  <path d="M4 7v-1a2 2 0 0 1 2 -2h2" />  <path d="M4 17v1a2 2 0 0 0 2 2h2" />  <path d="M16 4h2a2 2 0 0 1 2 2v1" />  <path d="M16 20h2a2 2 0 0 0 2 -2v-1" />  <line x1="5" y1="12" x2="19" y2="12" /></svg></button>
+                                </div>
+                                {#if !isFundingUTXOAddressValid}
+                                    <p class="mt-2 text-sm text-red-600" id="name-error"><b>Funding Total UTXO value: { sb.toBitcoin(fundingTotalUtxoValue) }</b> "fundingUtxoErrorMessage?"</p>
+                                {:else}
+                                    <p class="mt-2 text-sm text-gray red-600" id="name-error">Funding Total UTXO value: { sb.toBitcoin(fundingTotalUtxoValue) }</p>
+                                {/if}
+                            {/if}
+                            <p>&nbsp;</p>
+                            <div>
+                                <label for="price" class="block text-sm font-medium leading-6 text-gray-900">Transfer Price</label>
+                                <div class="relative mt-2 rounded-md shadow-sm">
+                                    <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                                        <span class="text-gray-500 sm:text-sm">&#8383</span>
+                                    </div>
+                                    <input type="text" bind:value={transferPrice} name="price" id="price" class="block w-full rounded-md border-0 py-1.5 pl-7 pr-12 text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6" placeholder="0.00" aria-describedby="price-currency">
+                                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
+                                        <span class="text-gray-500 sm:text-sm" id="price-currency">DOI</span>
+                                    </div>
+                                </div>
+                            </div>
+                        {/if}
             </div>
             <div class="lg:w-1/3 mt-8 lg:mt-0 rounded-2xl bg-gray-50 py-10 text-left ring-1 ring-inset ring-gray-900/5 lg:flex lg:flex-col lg:justify-start lg:py-16">
                 <div class="mx-auto max-w-xs px-8">
@@ -381,7 +462,7 @@
                         </div>
                     </div>
                     <div id="qr-container"></div>
-                    {#if qrCodeData && psbtBaseText && isNameValid}
+                    {#if qrCodeData && psbtBaseText && (isNameValid || buyOfferValid)}
                         {@html qrCode}
                         <div class="mt-4">
                             <label for="name" class="block text-sm font-medium leading-6 text-gray-900">PSBT File</label>
