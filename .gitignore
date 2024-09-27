@@ -1,6 +1,8 @@
 .DS_Store
 .idea
 public
+/helia-blocks
+/helia-data
 /namokado_*
 /namokado_v0.1.4
 node_modules

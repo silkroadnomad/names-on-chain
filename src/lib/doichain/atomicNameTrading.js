@@ -9,20 +9,22 @@ import { getNameOPStackScript } from "$lib/doichain/getNameOPStackScript.js";
  * @param name the name we want to sell/buy
  * @param fundingUtxoAddresses the utxos of the paying party (buyer) - Bob
  * @param nameOpTxs the nameOpUtxos of the transferring party (seller) - Alice (owner of the n
- * @param ownerOfName the address which owns the name
+ * @param ownerOfName a flag which indicates that we are the owner of that name. In such case we don't sign a funding input, only the input of name_op to transfer
  * @param nameExists flag indicating if name exists on the blockchain
  * @param transferPrice the amount in DOI to transfer to the seller
- * @param storageFee the fee in swartz necesssary to store a new name onto the blockchain
+ * @param storageFee the fee in swartz necessary to store a new name onto the blockchain
  * @returns {Promise<void>}
  */
 export const generateAtomicNameTradingPSBT = async (name, fundingUtxoAddresses, nameOpTxs, ownerOfName, nameExists, transferPrice, storageFee, network) => {
     if(!nameExists) return
-    if(!fundingUtxoAddresses || fundingUtxoAddresses.length===0) return
-    if(!nameOpTxs || nameOpTxs.length===0) return
+    if(!fundingUtxoAddresses || fundingUtxoAddresses.length === 0) return
+    if(!nameOpTxs || nameOpTxs.length === 0) return
+    if(transferPrice<0) return
 
     let _transferPrice = 0
 
     try {
+        console.log("")
         _transferPrice = sb.toSatoshi(transferPrice)
         console.log("_transferPrice in swartz", _transferPrice)
     } catch(ex) {
@@ -39,6 +41,7 @@ export const generateAtomicNameTradingPSBT = async (name, fundingUtxoAddresses, 
     // Filter nameOpTxs to include only transactions for the specified name
     const filteredNameOpTxs = nameOpTxs.filter(tx => tx.name === name);
     console.log("generateAtomicNameTradingPSBT:filteredNameOpTxs", filteredNameOpTxs)
+    if(!filteredNameOpTxs || filteredNameOpTxs.length === 0) return
 
     const sellerAddress = filteredNameOpTxs[0].address
     console.log("sellerAddress", sellerAddress)
@@ -52,29 +55,32 @@ export const generateAtomicNameTradingPSBT = async (name, fundingUtxoAddresses, 
     let totalInputAmount = 0;
     let totalOutputAmount = 0;
     const psbt = new Psbt({ network: network });
-    fundingUtxoAddresses.forEach(utxo => {
-        const scriptPubKeyHex = utxo.hex;
-        const isSegWit = scriptPubKeyHex?.startsWith('0014') || scriptPubKeyHex?.startsWith('0020');
-        if (isSegWit) {
-            console.log("adding segwit coin utxo as input",utxo)
-            psbt.addInput({
-                hash: utxo.hash,
-                index: utxo.n,
-                witnessUtxo: {
-                    script: Buffer.from(utxo.hex, 'hex'),
-                    value: utxo.value,
-                }
-            });
-        } else {
-            console.log("adding non-segwit coin utxo as input",utxo)
-            psbt.addInput({
-                hash: utxo.hash,
-                index: utxo.n,
-                nonWitnessUtxo: Buffer.from(utxo.hex, 'hex')
-            });
-        }
-        totalInputAmount += utxo.value;
-    })
+
+    if(!ownerOfName){
+        fundingUtxoAddresses.forEach(utxo => {
+            const scriptPubKeyHex = utxo.hex;
+            const isSegWit = scriptPubKeyHex?.startsWith('0014') || scriptPubKeyHex?.startsWith('0020');
+            if (isSegWit) {
+                console.log("adding segwit coin utxo as input",utxo)
+                psbt.addInput({
+                    hash: utxo.hash,
+                    index: utxo.n,
+                    witnessUtxo: {
+                        script: Buffer.from(utxo.hex, 'hex'),
+                        value: utxo.value,
+                    }
+                });
+            } else {
+                console.log("adding non-segwit coin utxo as input",utxo)
+                psbt.addInput({
+                    hash: utxo.hash,
+                    index: utxo.n,
+                    nonWitnessUtxo: Buffer.from(utxo.hex, 'hex')
+                });
+            }
+            totalInputAmount += utxo.value;
+        })
+    }
 
     filteredNameOpTxs.forEach(utxo => {
         const scriptPubKeyHex = utxo.hex;
@@ -98,8 +104,9 @@ export const generateAtomicNameTradingPSBT = async (name, fundingUtxoAddresses, 
             });
         }
         totalInputAmount += utxo.value;
-    });
-
+    })
+    if( _transferPrice < 0 ) return
+    console.log("_transferPrice",_transferPrice)
     //add coin output which pays the transfer price to Alice
     psbt.addOutput({
         address: sellerAddress,
@@ -109,28 +116,34 @@ export const generateAtomicNameTradingPSBT = async (name, fundingUtxoAddresses, 
     totalOutputAmount = totalOutputAmount + _transferPrice;
 
     //add change output which pays back totalInputAmount-storageFee-miningFee-transferPrice to the buyer
-    const transactionFee = getTransactionFee(fundingUtxoAddresses.length+1)
-    const changeAmount = totalInputAmount-storageFee-transactionFee-_transferPrice
-    psbt.addOutput({
-        address: changeAddress,
-        value: changeAmount
-    });
-    console.log("added changeAmount to psbt", changeAmount)
-    totalOutputAmount = totalOutputAmount + changeAmount;
-
-    //add name op output which goes to the seller
-    try {
-        const opCodesStackScript = getNameOPStackScript(name, ' ', buyerAddress, network);
-        psbt.setVersion(VERSION); // for name transactions
+    if(!ownerOfName){ //don't add  change if we don't know the buyer address
+        const transactionFee = getTransactionFee(fundingUtxoAddresses.length+1)
+        console.log("transactionFee", transactionFee)
+        const changeAmount = totalInputAmount-storageFee-transactionFee-_transferPrice
+        console.log("changeAmount", changeAmount)
         psbt.addOutput({
-            script: opCodesStackScript,
-            value: storageFee
+            address: changeAddress,
+            value: changeAmount
         });
-        totalOutputAmount += storageFee;
-    } catch( ex ) { console.error(ex) }
+        console.log("added changeAmount to psbt", changeAmount)
+        totalOutputAmount = totalOutputAmount + changeAmount;
+
+        //add name op output which goes to the seller
+        try {
+            const opCodesStackScript = getNameOPStackScript(name, ' ', buyerAddress, network);
+            psbt.setVersion(VERSION); // for name transactions
+            psbt.addOutput({
+                script: opCodesStackScript,
+                value: storageFee
+            });
+            totalOutputAmount += storageFee;
+        } catch( ex ) { console.error(ex) }
+    }
+
     console.log(`added nameOp ${name} storageFee to psbt`, storageFee);
     console.log("totalInputAmount",totalInputAmount)
     console.log("totalOutputAmount",totalOutputAmount)
+
     const psbtFile = psbt.toBase64();
     // const psbtFile = psbt.extractTransaction()
     console.log("generateAtomicNameTradingPSBT:psbt",psbtFile)

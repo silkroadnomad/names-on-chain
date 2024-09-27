@@ -264,16 +264,15 @@
     onDestroy(() => {
         if (animationTimeout) clearTimeout(animationTimeout);
     });
-    $: console.log("transferPrice",transferPrice)
+
     $: totalUtxoValue = utxoAddresses.reduce((sum, utxo) => sum + utxo.value, 0);
-
-
     $: {
         generateAtomicNameTradingPSBT(name, fundingUtxoAddresses, nameOpTxs, ownerOfName, nameExists, transferPrice, storageFee, $network).then( (_psbtBaseText) => {
                 if(bbqr)
                     renderBBQR(_psbtBaseText).then(imgurl => qrCodeData = imgurl)
                 else
                     renderBCUR(_psbtBaseText).then(_qr => {
+                        if(!_qr) return
                         qrCodeData = _qr;
                         buyOfferValid = true
                         displayQrCodes();
@@ -283,12 +282,6 @@
                     })
             }
         )
-
-        // transactionFee = result.transactionFee;
-        // changeAmount = result.changeAmount;
-        // totalAmount = result.totalAmount;
-
-
     }
 
 </script>
@@ -394,6 +387,10 @@
                                 </button>
                             </div>
                             <p>&nbsp;</p>
+                            {#if ownerOfName}
+                                If you are owner of that name you only have to tell us the transfer price.
+                                We generate an output to the same address where the name is stored with the transfer price and sign the name input.
+                            {/if}
                             {#if !ownerOfName}
                                 <label for="email" class="block text-sm font-medium leading-6 text-gray-900">Doichain Address of funds to buy name</label>
                                 <div class="relative mt-2 rounded-md shadow-sm flex items-center">
@@ -462,7 +459,8 @@
                         </div>
                     </div>
                     <div id="qr-container"></div>
-                    {#if qrCodeData && psbtBaseText && (isNameValid || buyOfferValid)}
+                    utxos to sign: {utxoAddresses.length}
+                    {#if qrCodeData && psbtBaseText && (psbtBaseText || buyOfferValid)}
                         {@html qrCode}
                         <div class="mt-4">
                             <label for="name" class="block text-sm font-medium leading-6 text-gray-900">PSBT File</label>
