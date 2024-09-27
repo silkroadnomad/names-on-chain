@@ -64,12 +64,12 @@
     let psbtBaseText;
     let scanOpenFunding = false
     let fundingUTXOAddress = localStorage.getItem('fundingUTXOAddress') || 'N8YtTBMRqMq9E45VMT9KVbfwt5X5oLD4vt';
-    $:console.log("fundingUTXOAddress",fundingUTXOAddress)
     /**
      * Indicates whether the funding UTXO address is valid
      * @type {boolean}
      */
-    let isFundingUTXOAddressValid = true;
+    let isConnected = false
+    let isFundingUTXOAddressValid = true
     let transferPrice = 100
     let fundingTotalAmount = 0
     let fundingTotalUtxoValue = 0
@@ -83,11 +83,10 @@
      * @param result
      */
     export async function nameCheckCallback(result) {
-        console.log("result",result)
         doichainAddress = result.currentNameAddress
-        nameExists = result.nameExists
         isNameValid = result.isNameValid
         nameErrorMessage  = result.nameErrorMessage
+        nameExists = result.nameExists
         isUTXOAddressValid = result.isUTXOAddressValid
     }
 

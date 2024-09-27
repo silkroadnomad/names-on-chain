@@ -100,3 +100,5 @@ ipfs add -r lesson02
 - Animated QR codes for multi-part data
 - Reactive programming in Svelte
 - Error handling in asynchronous operations
+
+### Lesson 5) Marketplace 
