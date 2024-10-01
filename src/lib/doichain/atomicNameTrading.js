@@ -24,7 +24,6 @@ export const generateAtomicNameTradingPSBT = async (name, fundingUtxoAddresses, 
     let _transferPrice = 0
 
     try {
-        console.log("")
         _transferPrice = sb.toSatoshi(transferPrice)
         console.log("_transferPrice in swartz", _transferPrice)
     } catch(ex) {
@@ -58,6 +57,8 @@ export const generateAtomicNameTradingPSBT = async (name, fundingUtxoAddresses, 
 
     if(!ownerOfName){
         fundingUtxoAddresses.forEach(utxo => {
+            console.log("utxo->",utxo)
+            // if (!utxo.scriptPubKey.nameOp) {
             const scriptPubKeyHex = utxo.hex;
             const isSegWit = scriptPubKeyHex?.startsWith('0014') || scriptPubKeyHex?.startsWith('0020');
             if (isSegWit) {
@@ -79,6 +80,7 @@ export const generateAtomicNameTradingPSBT = async (name, fundingUtxoAddresses, 
                 });
             }
             totalInputAmount += utxo.value;
+            // }
         })
     }
 
@@ -90,23 +92,28 @@ export const generateAtomicNameTradingPSBT = async (name, fundingUtxoAddresses, 
             psbt.addInput({
                 hash: utxo.hash,
                 index: utxo.n,
+                sequence: 0xfffffffe, // Enable RBF
                 witnessUtxo: {
                     script: Buffer.from(utxo.hex, 'hex'),
                     value: utxo.value,
-                }
+                },
+                // witnessScript: Buffer.from(utxo.scriptPubKey.hex, 'hex'),
+                // redeemScript: Buffer.from(utxo.scriptPubKey.asm, 'hex')
             });
         } else {
             console.log("adding non-segwit name_op as input", utxo)
             psbt.addInput({
                 hash: utxo.hash,
                 index: utxo.n,
-                nonWitnessUtxo: Buffer.from(utxo.hex, 'hex')
+                sequence: 0xfffffffe, // Enable RBF
+                nonWitnessUtxo: Buffer.from(utxo.hex, 'hex'),
+                // redeemScript: Buffer.from(utxo.scriptPubKey.asm, 'hex')
             });
         }
         totalInputAmount += utxo.value;
     })
     if( _transferPrice < 0 ) return
-    console.log("_transferPrice",_transferPrice)
+    // console.log("_transferPrice",_transferPrice)
     //add coin output which pays the transfer price to Alice
     psbt.addOutput({
         address: sellerAddress,

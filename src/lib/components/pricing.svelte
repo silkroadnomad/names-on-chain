@@ -5,7 +5,7 @@
     import {electrumClient, connectedServer, scanOpen, network} from "../doichain/doichain-store.js";
     import { renderBBQR, renderBCUR } from "$lib/doichain/renderQR.js";
     import ScanModal from "$lib/doichain/ScanModal.svelte";
-    // import { DOICHAIN } from "$lib/doichain/doichain.js";
+
     import { signTransaction } from "$lib/doichain/signTransaction.js";
     import sb from "satoshi-bitcoin";
     import { onDestroy } from "svelte";
@@ -38,6 +38,7 @@
      * - change address
      */
     let doichainAddress = localStorage.getItem('doichainAddress') || '';
+    $:localStorage.setItem('doichainAddress',doichainAddress)
 
     /**
      * Values to calculate the change amount and display a proper 'invoice'
@@ -64,13 +65,15 @@
     let psbtBaseText;
     let scanOpenFunding = false
     let fundingUTXOAddress = localStorage.getItem('fundingUTXOAddress') || 'N8YtTBMRqMq9E45VMT9KVbfwt5X5oLD4vt';
+    $:localStorage.setItem('fundingUTXOAddress',fundingUTXOAddress)
+
     /**
      * Indicates whether the funding UTXO address is valid
      * @type {boolean}
      */
     let isConnected = false
     let isFundingUTXOAddressValid = true
-    let transferPrice = 100
+    let transferPrice = 1
     let fundingTotalAmount = 0
     let fundingTotalUtxoValue = 0
     let fundingUtxoAddresses = []
@@ -88,6 +91,14 @@
         nameErrorMessage  = result.nameErrorMessage
         nameExists = result.nameExists
         isUTXOAddressValid = result.isUTXOAddressValid
+
+       /* if(!nameExists || !isNameValid){
+                qrCodeData = undefined;
+                psbtBaseText = undefined;
+                transactionFee = 0;
+                changeAmount = 0;
+                totalAmount = 0;
+        }*/
     }
 
     /**
@@ -207,6 +218,10 @@
                 console.log("error",result)
                 utxoErrorMessage = result.error;
                 qrCodeData = undefined;
+                psbtBaseText = undefined;
+                transactionFee = 0;
+                changeAmount = 0;
+                totalAmount = 0;
             } else {
                 psbtBaseText = result.psbtBase64;
                 transactionFee = result.transactionFee;
@@ -257,7 +272,7 @@
         qrCode = qrCodeData[currentSvgIndex];
         currentSvgIndex = (currentSvgIndex + 1) % qrCodeData.length;
         // console.log("currentSvgIndex", currentSvgIndex);
-        animationTimeout = setTimeout(animateQrCodes, 300);
+        animationTimeout = setTimeout(animateQrCodes, 200);
     }
     
     onDestroy(() => {
@@ -281,6 +296,13 @@
                     })
             }
         )
+    }
+
+    function incrementQRIndex() {
+        if (qrCodeData && qrCodeData.length > 0) {
+            currentSvgIndex = (currentSvgIndex + 1) % qrCodeData.length;
+            qrCode = qrCodeData[currentSvgIndex];
+        }
     }
 
 </script>
@@ -458,9 +480,12 @@
                         </div>
                     </div>
                     <div id="qr-container"></div>
-                    utxos to sign: {utxoAddresses.length}
+                    utxos to sign: {fundingUtxoAddresses.length}
                     {#if qrCodeData && psbtBaseText && (psbtBaseText || buyOfferValid)}
                         {@html qrCode}
+                        <div on:click={incrementQRIndex} class="cursor-pointer">
+                            { currentSvgIndex + 1 } / { qrCodeData ? qrCodeData.length : 0 }
+                        </div>
                         <div class="mt-4">
                             <label for="name" class="block text-sm font-medium leading-6 text-gray-900">PSBT File</label>
                             <div class="relative mt-2 rounded-md shadow-sm">
@@ -503,5 +528,8 @@
         0% { opacity: 1; }
         50% { opacity: 0; }
         100% { opacity: 1; }
+    }
+    .cursor-pointer {
+        cursor: pointer;
     }
 </style>
