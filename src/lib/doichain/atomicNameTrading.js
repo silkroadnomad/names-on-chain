@@ -72,7 +72,7 @@ export const generateAtomicNameTradingPSBT = async (name, fundingUtxoAddresses, 
                     hash: utxo.hash,
                     index: utxo.n,
                     witnessUtxo: {
-                        script: Buffer.from(utxo.hex, 'hex'),
+                        script: Buffer.from(utxo.scriptPubKey.hex, 'hex'),
                         value: utxo.value,
                     }
                 });
@@ -106,7 +106,7 @@ export const generateAtomicNameTradingPSBT = async (name, fundingUtxoAddresses, 
         if (isSegWit) {
             console.log("adding segwit name_op as input", utxo);
             input.witnessUtxo = {
-                script: Buffer.from(utxo.hex, 'hex'),
+                script: Buffer.from(utxo.scriptPubKey.hex, 'hex'),
                 value: utxo.value,
             };
             if (utxo.witnessScript) {

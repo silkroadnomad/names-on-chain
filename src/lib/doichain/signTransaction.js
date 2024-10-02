@@ -37,7 +37,8 @@ export function signTransaction(_utxoAddresses, _name, _network, _storageFee, _r
                 hash: utxo.hash,
                 index: utxo.n,
                 witnessUtxo: {
-                    script: Buffer.from(utxo.hex, 'hex'),
+                    // script: Buffer.from(utxo.hex, 'hex'),
+                    script: Buffer.from(utxo.scriptPubKey.hex, 'hex'),
                     value: utxo.value,
                 }
             });
