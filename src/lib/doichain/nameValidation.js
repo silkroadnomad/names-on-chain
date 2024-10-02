@@ -29,6 +29,7 @@ export async function _checkName(electrumClient, currentNameAddress, _name, tota
         const res = await nameShow(electrumClient, _name);
         if (res.length > 0) {
             for (let utxo of res) {
+                console.log("checkName-nameShow",utxo)
                 const scriptPubKey = utxo.scriptPubKey;
                 if (scriptPubKey && scriptPubKey.nameOp) {
                     currentNameAddress = scriptPubKey.addresses[0];

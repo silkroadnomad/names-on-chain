@@ -22,7 +22,7 @@ export async function getUtxosAndNamesOfAddress(electrumClient, doichainAddress)
     const result = await getUTXOSFromAddress(electrumClient, doichainAddress)
     for (let utxo of result) {
         const scriptPubKey = utxo.fullTx.scriptPubKey;
-        if (!scriptPubKey.nameOp) {
+        if (!scriptPubKey?.nameOp) {
             console.log("utxo.fullTx", utxo)
             utxoAddresses.push({
                 formattedBlocktime: utxo.fullTx.formattedBlocktime,
@@ -33,7 +33,7 @@ export async function getUtxosAndNamesOfAddress(electrumClient, doichainAddress)
                 n: utxo.fullTx.n,
                 value: utxo.value,
                 height: utxo.height,
-                address: utxo.fullTx.scriptPubKey.addresses[0]})
+                address: utxo.fullTx?.scriptPubKey?.addresses[0]})
         } else {
             nameOpTxs.push({
                 name: scriptPubKey.nameOp.name,
@@ -46,7 +46,7 @@ export async function getUtxosAndNamesOfAddress(electrumClient, doichainAddress)
                 n: utxo.fullTx.n,
                 value: utxo.value,
                 height: utxo.height,
-                address: utxo.fullTx.scriptPubKey.addresses[0]
+                address: utxo.fullTx?.scriptPubKey?.addresses[0]
             })
         }
         totalUtxoValue+=utxo.value;

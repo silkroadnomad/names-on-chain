@@ -27,9 +27,7 @@ function base64ToHex(base64) {
  * @returns {Promise<void>}
  */
 export const renderBCUR = async (qrData) => {
-
 	if (!qrData) {
-        console.error("No QR data provided");
         return;
     }
 	const maxFragmentLength = 50

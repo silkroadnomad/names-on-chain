@@ -54,13 +54,18 @@ export const generateAtomicNameTradingPSBT = async (name, fundingUtxoAddresses, 
     let totalInputAmount = 0;
     let totalOutputAmount = 0;
     const psbt = new Psbt({ network: network });
+    
+    // Set the version for name operations
+    psbt.setVersion(VERSION);
 
     if(!ownerOfName){
         fundingUtxoAddresses.forEach(utxo => {
-            console.log("utxo->",utxo)
+            console.log("fundingUtxoAddresses->",utxo)
+            console.log("utxo.fullTx.scriptPubKey.type",utxo?.fullTx?.scriptPubKey?.type)
             // if (!utxo.scriptPubKey.nameOp) {
             const scriptPubKeyHex = utxo.hex;
-            const isSegWit = scriptPubKeyHex?.startsWith('0014') || scriptPubKeyHex?.startsWith('0020');
+            const isSegWit = utxo?.scriptPubKey?.type === "witness_v0_keyhash" || scriptPubKeyHex?.startsWith('0014') || scriptPubKeyHex?.startsWith('0020');
+            // const isSegWit =  scriptPubKeyHex?.startsWith('0014') || scriptPubKeyHex?.startsWith('0020');
             if (isSegWit) {
                 console.log("adding segwit coin utxo as input",utxo)
                 psbt.addInput({
@@ -85,31 +90,38 @@ export const generateAtomicNameTradingPSBT = async (name, fundingUtxoAddresses, 
     }
 
     filteredNameOpTxs.forEach(utxo => {
+        console.log("filteredNameOpTxs->",utxo)
+        console.log("utxo.fullTx.scriptPubKey.type",utxo?.fullTx?.scriptPubKey?.type)
         const scriptPubKeyHex = utxo.hex;
-        const isSegWit = scriptPubKeyHex?.startsWith('0014') || scriptPubKeyHex?.startsWith('0020');
+        const isSegWit = utxo?.scriptPubKey?.type === "witness_v0_keyhash" || scriptPubKeyHex?.startsWith('0014') || scriptPubKeyHex?.startsWith('0020');
+
+        // const isSegWit = scriptPubKeyHex?.startsWith('0014') || scriptPubKeyHex?.startsWith('0020');
+        
+        const input = {
+            hash: utxo.hash,
+            index: utxo.n,
+            sequence: 0xfffffffe, // Enable RBF
+        };
+
         if (isSegWit) {
-            console.log("adding segwit name_op as input", utxo)
-            psbt.addInput({
-                hash: utxo.hash,
-                index: utxo.n,
-                sequence: 0xfffffffe, // Enable RBF
-                witnessUtxo: {
-                    script: Buffer.from(utxo.hex, 'hex'),
-                    value: utxo.value,
-                },
-                // witnessScript: Buffer.from(utxo.scriptPubKey.hex, 'hex'),
-                // redeemScript: Buffer.from(utxo.scriptPubKey.asm, 'hex')
-            });
+            console.log("adding segwit name_op as input", utxo);
+            input.witnessUtxo = {
+                script: Buffer.from(utxo.hex, 'hex'),
+                value: utxo.value,
+            };
+            if (utxo.witnessScript) {
+                input.witnessScript = Buffer.from(utxo.witnessScript, 'hex');
+            }
         } else {
-            console.log("adding non-segwit name_op as input", utxo)
-            psbt.addInput({
-                hash: utxo.hash,
-                index: utxo.n,
-                sequence: 0xfffffffe, // Enable RBF
-                nonWitnessUtxo: Buffer.from(utxo.hex, 'hex'),
-                // redeemScript: Buffer.from(utxo.scriptPubKey.asm, 'hex')
-            });
+            console.log("adding non-segwit name_op as input", utxo);
+            input.nonWitnessUtxo = Buffer.from(utxo.hex, 'hex');
         }
+
+        if (utxo.redeemScript) {
+            input.redeemScript = Buffer.from(utxo.redeemScript, 'hex');
+        }
+
+        psbt.addInput(input);
         totalInputAmount += utxo.value;
     })
     if( _transferPrice < 0 ) return
@@ -138,7 +150,6 @@ export const generateAtomicNameTradingPSBT = async (name, fundingUtxoAddresses, 
         //add name op output which goes to the seller
         try {
             const opCodesStackScript = getNameOPStackScript(name, ' ', buyerAddress, network);
-            psbt.setVersion(VERSION); // for name transactions
             psbt.addOutput({
                 script: opCodesStackScript,
                 value: storageFee

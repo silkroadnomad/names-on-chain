@@ -86,6 +86,7 @@
      * @param result
      */
     export async function nameCheckCallback(result) {
+        console.log("nameExists",nameExists)
         doichainAddress = result.currentNameAddress
         isNameValid = result.isNameValid
         nameErrorMessage  = result.nameErrorMessage
