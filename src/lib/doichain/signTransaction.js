@@ -31,13 +31,13 @@ export function signTransaction(_utxoAddresses, _name, _network, _storageFee, _r
 
     _utxoAddresses.forEach(utxo => {
         const scriptPubKeyHex = utxo.hex;
-        const isSegWit = scriptPubKeyHex?.startsWith('0014') || scriptPubKeyHex?.startsWith('0020');
+        const isSegWit = utxo?.scriptPubKey?.type === "witness_v0_keyhash" || scriptPubKeyHex?.startsWith('0014') || scriptPubKeyHex?.startsWith('0020');
+        // const isSegWit =  scriptPubKeyHex?.startsWith('0014') || scriptPubKeyHex?.startsWith('0020');
         if (isSegWit) {
             psbt.addInput({
                 hash: utxo.hash,
                 index: utxo.n,
                 witnessUtxo: {
-                    // script: Buffer.from(utxo.hex, 'hex'),
                     script: Buffer.from(utxo.scriptPubKey.hex, 'hex'),
                     value: utxo.value,
                 }
