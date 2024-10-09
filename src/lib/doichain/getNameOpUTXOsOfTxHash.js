@@ -19,7 +19,7 @@ export async function getNameOpUTXOsOfTxHash(electrumClient, tx, n) {
 		parsedUtxo.hex = txDetails.hex;
 		// parsedUtxo.scriptPubKey = txDetails.scriptPubKey;
 		parsedUtxo.formattedBlocktime = txDetails.blocktime ? moment.unix(txDetails.blocktime).format('YYYY-MM-DD HH:mm:ss') : 'mempool';
-		console.log("parsedUtxo",parsedUtxo)
+		// console.log("parsedUtxo",parsedUtxo)
 		return parsedUtxo
 	}
 	else {
@@ -30,7 +30,7 @@ export async function getNameOpUTXOsOfTxHash(electrumClient, tx, n) {
 			// parsedUtxo.scriptPubKey = txDetails.scriptPubKey;
 			parsedUtxo.formattedBlocktime = txDetails.blocktime ? moment.unix(txDetails.blocktime).format('YYYY-MM-DD HH:mm:ss') : 'mempool';
 			parsedUtxos.push(parsedUtxo)
-			console.log("parsedUtxos",parsedUtxos)
+			// console.log("parsedUtxos",parsedUtxos)
 		}
 		return parsedUtxos
 	}

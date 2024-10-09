@@ -64,6 +64,8 @@
     let utxoAddresses = [];
     let psbtBaseText;
     let scanOpenFunding = false
+    let currentNameOp;
+    let currentNameUtxo;
     let fundingUTXOAddress = localStorage.getItem('fundingUTXOAddress') || 'N8YtTBMRqMq9E45VMT9KVbfwt5X5oLD4vt';
     $:localStorage.setItem('fundingUTXOAddress',fundingUTXOAddress)
 
@@ -86,13 +88,14 @@
      * @param result
      */
     export async function nameCheckCallback(result) {
-        console.log("nameExists",nameExists)
+        console.log("nameCheckCallback",result)
         doichainAddress = result.currentNameAddress
         isNameValid = result.isNameValid
         nameErrorMessage  = result.nameErrorMessage
         nameExists = result.nameExists
         isUTXOAddressValid = result.isUTXOAddressValid
-
+        currentNameOp = result.currentNameOp
+        currentNameUtxo = result.currentNameUtxo
        /* if(!nameExists || !isNameValid){
                 qrCodeData = undefined;
                 psbtBaseText = undefined;
@@ -123,6 +126,7 @@
     $: {
         if(name && isConnected && doichainAddress){
             getUtxosAndNamesOfAddress($electrumClient, doichainAddress).then((retObj) => {
+                console.log("getUtxosAndNamesOfAddress for doichainAddress",retObj)
                 nameOpTxs = retObj.nameOpTxs
                 totalUtxoValue = retObj.totalUtxoValue
                 utxoAddresses = retObj.utxoAddresses
@@ -137,10 +141,8 @@
      */
     $: {
         if(isConnected && fundingUTXOAddress){
-            console.log("getting utxos")
             getUtxosAndNamesOfAddress($electrumClient, fundingUTXOAddress).then((retObj) => {
-                console.log("got new utxos and stuff",retObj)
-                // nameOpTxs = retObj.nameOpTxs //we are not interested in the nameOps of the funding address
+                console.log("getUtxosAndNamesOfAddress of fundingUTXOAddress",retObj)
                 fundingTotalUtxoValue = retObj.totalUtxoValue
                 fundingUtxoAddresses = retObj.utxoAddresses
             })
@@ -186,33 +188,9 @@
 
     /**
      * Reactive block for handling name registration transaction and QR code generation.
-     * 
-     * This block is triggered whenever `name` or `isNameValid` changes.
-     * It performs the following actions:
-     * 1. Calls `signTransaction` to create a PSBT (Partially Signed Bitcoin Transaction).
-     * 2. Updates transaction details (fees, amounts) based on the result.
-     * 3. Generates either a BBQR or BCUR QR code for the transaction.
-     * 
-     * @reactive
-     * @depends {string} name - The name to be registered.
-     * @depends {boolean} isNameValid - Whether the name is valid for registration.
-     * @depends {Array<Object>} utxoAddresses - UTXO addresses for the transaction.
-     * @depends {Object} DOICHAIN - Doichain network configuration.
-     * @depends {number} storageFee - Fee for storing the name on the network.
-     * @depends {string} doichainAddress - The Doichain address for the transaction.
-     * @depends {boolean} bbqr - Flag to determine QR code format (BBQR or BCUR).
-     * 
-     * @affects {string} utxoErrorMessage - Error message if transaction creation fails.
-     * @affects {string} psbtBaseText - Base64 encoded PSBT.
-     * @affects {number} transactionFee - Calculated transaction fee.
-     * @affects {number} changeAmount - Calculated change amount.
-     * @affects {number} totalAmount - Total transaction amount.
-     * @affects {string|string[]} qrCodeData - Generated QR code data.
-     * 
-     * @throws {Error} Logs error to console if QR code generation fails.
      */
     $: {
-        if(name && isNameValid) {
+        if(name && isNameValid && !nameExists) {
             const result = signTransaction(utxoAddresses, name, $network, storageFee, doichainAddress, doichainAddress, doichainAddress);
             console.log("signTransaction:result",result)
             if (result.error) {
@@ -281,22 +259,22 @@
     });
 
     $: totalUtxoValue = utxoAddresses.reduce((sum, utxo) => sum + utxo.value, 0);
-    $: {
-        generateAtomicNameTradingPSBT(name, fundingUtxoAddresses, nameOpTxs, ownerOfName, nameExists, transferPrice, storageFee, $network).then( (_psbtBaseText) => {
-                if(bbqr)
-                    renderBBQR(_psbtBaseText).then(imgurl => qrCodeData = imgurl)
-                else
-                    renderBCUR(_psbtBaseText).then(_qr => {
-                        if(!_qr) return
-                        qrCodeData = _qr;
-                        buyOfferValid = true
-                        displayQrCodes();
-                    }).catch(error => {
-                        console.error('Error generating QR code:', error);
-                        qrCodeData = undefined;
-                    })
-            }
-        )
+    $: if (name && nameExists && (ownerOfName || fundingUtxoAddresses.length > 0)) {
+        generateAtomicNameTradingPSBT(name, fundingUtxoAddresses, [currentNameUtxo], ownerOfName, nameExists, transferPrice, storageFee, $network).then( (_psbtBaseText) => {
+            psbtBaseText = _psbtBaseText;
+            if(bbqr)
+                renderBBQR(_psbtBaseText).then(imgurl => qrCodeData = imgurl)
+            else
+                renderBCUR(_psbtBaseText).then(_qr => {
+                    if(!_qr) return
+                    qrCodeData = _qr;
+                    buyOfferValid = true
+                    displayQrCodes();
+                }).catch(error => {
+                    console.error('Error generating QR code:', error);
+                    qrCodeData = undefined;
+                })
+        });
     }
 
     function incrementQRIndex() {

@@ -16,6 +16,16 @@ import { getNameOPStackScript } from "$lib/doichain/getNameOPStackScript.js";
  * @returns {Promise<void>}
  */
 export const generateAtomicNameTradingPSBT = async (name, fundingUtxoAddresses, nameOpTxs, ownerOfName, nameExists, transferPrice, storageFee, network) => {
+    console.log("generateAtomicNameTradingPSBT", {
+        name,
+        fundingUtxoAddresses,
+        nameOpTxs,
+        ownerOfName,
+        nameExists,
+        transferPrice,
+        storageFee,
+        network
+    });
     if(!nameExists) return
     if(!fundingUtxoAddresses || fundingUtxoAddresses.length === 0) return
     if(!nameOpTxs || nameOpTxs.length === 0) return
@@ -38,7 +48,7 @@ export const generateAtomicNameTradingPSBT = async (name, fundingUtxoAddresses, 
     console.log("generateAtomicNameTradingPSBT:nameExists", nameExists)
 
     // Filter nameOpTxs to include only transactions for the specified name
-    const filteredNameOpTxs = nameOpTxs.filter(tx => tx.name === name);
+    const filteredNameOpTxs = nameOpTxs.filter(tx => tx.nameOp.name === name);
     console.log("generateAtomicNameTradingPSBT:filteredNameOpTxs", filteredNameOpTxs)
     if(!filteredNameOpTxs || filteredNameOpTxs.length === 0) return
 
@@ -107,7 +117,7 @@ export const generateAtomicNameTradingPSBT = async (name, fundingUtxoAddresses, 
             console.log("adding segwit name_op as input", utxo);
             input.witnessUtxo = {
                 script: Buffer.from(utxo.scriptPubKey.hex, 'hex'),
-                value: utxo.value,
+                value: Math.floor(utxo.value),
             };
             if (utxo.witnessScript) {
                 input.witnessScript = Buffer.from(utxo.witnessScript, 'hex');
@@ -122,7 +132,7 @@ export const generateAtomicNameTradingPSBT = async (name, fundingUtxoAddresses, 
         }
 
         psbt.addInput(input);
-        totalInputAmount += utxo.value;
+        totalInputAmount += Math.floor(utxo.value);
     })
     if( _transferPrice < 0 ) return
     // console.log("_transferPrice",_transferPrice)
@@ -138,8 +148,11 @@ export const generateAtomicNameTradingPSBT = async (name, fundingUtxoAddresses, 
     if(!ownerOfName){ //don't add  change if we don't know the buyer address
         const transactionFee = getTransactionFee(fundingUtxoAddresses.length+1)
         console.log("transactionFee", transactionFee)
-        const changeAmount = totalInputAmount-storageFee-transactionFee-_transferPrice
-        console.log("changeAmount", changeAmount)
+        const changeAmount = Math.floor(totalInputAmount - storageFee - transactionFee - _transferPrice)
+        if (changeAmount < 0) {
+            console.error("Error: Negative change amount calculated")
+            return // or throw an error, depending on how you want to handle this situation
+        }
         psbt.addOutput({
             address: changeAddress,
             value: changeAmount

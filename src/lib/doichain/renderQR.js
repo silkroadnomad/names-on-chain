@@ -30,6 +30,7 @@ export const renderBCUR = async (qrData) => {
 	if (!qrData) {
         return;
     }
+	console.log("qrData",qrData)
 	const maxFragmentLength = 50
 	// not account. lets try psbt
 	const parts = [];

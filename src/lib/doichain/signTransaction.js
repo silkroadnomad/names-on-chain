@@ -60,6 +60,7 @@ export function signTransaction(_utxoAddresses, _name, _network, _storageFee, _r
                 script: opCodesStackScript,
                 value: _storageFee
             });
+            console.log("added nameOp", _name, opCodesStackScript);
             totalOutputAmount = totalOutputAmount + _storageFee;
         }catch( ex ) { console.error(ex) }
     }
@@ -78,10 +79,12 @@ export function signTransaction(_utxoAddresses, _name, _network, _storageFee, _r
         address: _changeAddress || doichainAddress,
         value: changeAmount,
     });
+    console.log("added change", changeAmount, _changeAddress);
 
     const psbtFile = psbt.toBase64();
 
     return {
+        psbt,
         psbtBase64: psbtFile,
         totalInputAmount,
         totalOutputAmount,
