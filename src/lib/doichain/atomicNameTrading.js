@@ -103,10 +103,11 @@ export const generateAtomicNameTradingPSBT = async (name, fundingUtxoAddresses, 
         console.log("filteredNameOpTxs->",utxo)
         console.log("utxo.fullTx.scriptPubKey.type",utxo?.fullTx?.scriptPubKey?.type)
         const scriptPubKeyHex = utxo.hex;
-        const isSegWit = utxo?.scriptPubKey?.type === "witness_v0_keyhash" || scriptPubKeyHex?.startsWith('0014') || scriptPubKeyHex?.startsWith('0020');
+        const isSegWit = utxo?.scriptPubKey?.type === "witness_v0_keyhash" || 
+                         utxo?.scriptPubKey?.type === "witness_v0_scripthash" ||
+                         scriptPubKeyHex?.startsWith('0014') || 
+                         scriptPubKeyHex?.startsWith('0020');
 
-        // const isSegWit = scriptPubKeyHex?.startsWith('0014') || scriptPubKeyHex?.startsWith('0020');
-        
         const input = {
             hash: utxo.hash,
             index: utxo.n,
@@ -115,16 +116,26 @@ export const generateAtomicNameTradingPSBT = async (name, fundingUtxoAddresses, 
 
         if (isSegWit) {
             console.log("adding segwit name_op as input", utxo);
-            input.witnessUtxo = {
-                script: Buffer.from(utxo.scriptPubKey.hex, 'hex'),
-                value: Math.floor(utxo.value),
-            };
+            if (utxo.scriptPubKey && utxo.value !== undefined) {
+                input.witnessUtxo = {
+                    script: Buffer.from(utxo.scriptPubKey.hex, 'hex'),
+                    value: Math.floor(utxo.value),
+                }
+            } else {
+                console.error("Missing required data for segwit input", utxo);
+                return; // Skip this input if we don't have the required data
+            }
             if (utxo.witnessScript) {
                 input.witnessScript = Buffer.from(utxo.witnessScript, 'hex');
             }
         } else {
             console.log("adding non-segwit name_op as input", utxo);
-            input.nonWitnessUtxo = Buffer.from(utxo.hex, 'hex');
+            if (utxo.hex) {
+                input.nonWitnessUtxo = Buffer.from(utxo.hex, 'hex');
+            } else {
+                console.error("Missing full transaction data for non-segwit input", utxo);
+                return; // Skip this input if we don't have the full transaction data
+            }
         }
 
         if (utxo.redeemScript) {
