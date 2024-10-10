@@ -1,4 +1,5 @@
 import moment from 'moment/moment.js'
+import sb from "satoshi-bitcoin";
 
 /**
  * Takes a txid and returns name_op outputs with extracted
@@ -17,7 +18,7 @@ export async function getNameOpUTXOsOfTxHash(electrumClient, tx, n) {
 		const parsedUtxo = txDetails.vout[n] //await getNameOpOfVout(electrumClient, vout)
 		parsedUtxo.txid = txDetails.txid;
 		parsedUtxo.hex = txDetails.hex;
-		// parsedUtxo.scriptPubKey = txDetails.scriptPubKey;
+		parsedUtxo.value = sb.toSatoshi(parsedUtxo.value); // Convert to satoshis
 		parsedUtxo.formattedBlocktime = txDetails.blocktime ? moment.unix(txDetails.blocktime).format('YYYY-MM-DD HH:mm:ss') : 'mempool';
 		// console.log("parsedUtxo",parsedUtxo)
 		return parsedUtxo
@@ -27,7 +28,7 @@ export async function getNameOpUTXOsOfTxHash(electrumClient, tx, n) {
 			const parsedUtxo = vout //await getNameOpOfVout(electrumClient, vout)
 			parsedUtxo.txid = txDetails.txid;
 			parsedUtxo.hex = txDetails.hex;
-			// parsedUtxo.scriptPubKey = txDetails.scriptPubKey;
+			parsedUtxo.value = sb.toSatoshi(parsedUtxo.value); // Convert to satoshis
 			parsedUtxo.formattedBlocktime = txDetails.blocktime ? moment.unix(txDetails.blocktime).format('YYYY-MM-DD HH:mm:ss') : 'mempool';
 			parsedUtxos.push(parsedUtxo)
 			// console.log("parsedUtxos",parsedUtxos)

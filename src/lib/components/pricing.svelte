@@ -260,7 +260,7 @@
 
     $: totalUtxoValue = utxoAddresses.reduce((sum, utxo) => sum + utxo.value, 0);
     $: if (name && nameExists && (ownerOfName || fundingUtxoAddresses.length > 0)) {
-        generateAtomicNameTradingPSBT(name, fundingUtxoAddresses, [currentNameUtxo], ownerOfName, nameExists, transferPrice, storageFee, $network).then( (_psbtBaseText) => {
+        generateAtomicNameTradingPSBT(name, fundingUtxoAddresses, currentNameUtxo?[currentNameUtxo]:[], ownerOfName, nameExists, transferPrice, storageFee, $network).then( (_psbtBaseText) => {
             psbtBaseText = _psbtBaseText;
             if(bbqr)
                 renderBBQR(_psbtBaseText).then(imgurl => qrCodeData = imgurl)

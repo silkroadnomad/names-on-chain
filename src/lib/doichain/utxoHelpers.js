@@ -30,7 +30,7 @@ export async function getUtxosAndNamesOfAddress(electrumClient, doichainAddress)
                 hex: utxo.fullTx.hex,
                 scriptPubKey: utxo.fullTx.scriptPubKey,
                 hash: utxo.tx_hash,
-                n: utxo.fullTx.n,
+                n: utxo.tx_pos,
                 value: utxo.value,
                 height: utxo.height,
                 address: utxo.fullTx?.scriptPubKey?.addresses[0]})
@@ -43,7 +43,7 @@ export async function getUtxosAndNamesOfAddress(electrumClient, doichainAddress)
                 hex: utxo.fullTx.hex,
                 scriptPubKey: utxo.fullTx.scriptPubKey,
                 hash: utxo.tx_hash,
-                n: utxo.fullTx.n,
+                n: utxo.tx_pos,
                 value: utxo.value,
                 height: utxo.height,
                 address: utxo.fullTx?.scriptPubKey?.addresses[0]

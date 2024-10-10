@@ -71,28 +71,30 @@ export const generateAtomicNameTradingPSBT = async (name, fundingUtxoAddresses, 
     if(!ownerOfName){
         fundingUtxoAddresses.forEach(utxo => {
             console.log("fundingUtxoAddresses->",utxo)
-            console.log("utxo.fullTx.scriptPubKey.type",utxo?.fullTx?.scriptPubKey?.type)
+            console.log("utxo.fullTx.type",utxo?.scriptPubKey?.type)
             // if (!utxo.scriptPubKey.nameOp) {
             const scriptPubKeyHex = utxo.hex;
             const isSegWit = utxo?.scriptPubKey?.type === "witness_v0_keyhash" || scriptPubKeyHex?.startsWith('0014') || scriptPubKeyHex?.startsWith('0020');
             // const isSegWit =  scriptPubKeyHex?.startsWith('0014') || scriptPubKeyHex?.startsWith('0020');
             if (isSegWit) {
-                console.log("adding segwit coin utxo as input",utxo)
-                psbt.addInput({
+                const input = {
                     hash: utxo.hash,
                     index: utxo.n,
                     witnessUtxo: {
                         script: Buffer.from(utxo.scriptPubKey.hex, 'hex'),
                         value: utxo.value,
                     }
-                });
+                }
+                psbt.addInput(input);
+                console.log("adding segwit coin utxo as input",input)
             } else {
-                console.log("adding non-segwit coin utxo as input",utxo)
-                psbt.addInput({
+                const input = {
                     hash: utxo.hash,
                     index: utxo.n,
                     nonWitnessUtxo: Buffer.from(utxo.hex, 'hex')
-                });
+                }
+                console.log("adding non-segwit coin utxo as input",input)
+                psbt.addInput(input);
             }
             totalInputAmount += utxo.value;
             // }
@@ -101,7 +103,7 @@ export const generateAtomicNameTradingPSBT = async (name, fundingUtxoAddresses, 
 
     filteredNameOpTxs.forEach(utxo => {
         console.log("filteredNameOpTxs->",utxo)
-        console.log("utxo.fullTx.scriptPubKey.type",utxo?.fullTx?.scriptPubKey?.type)
+        console.log("utxo.scriptPubKey.type",utxo?.scriptPubKey?.type)
         const scriptPubKeyHex = utxo.hex;
         const isSegWit = utxo?.scriptPubKey?.type === "witness_v0_keyhash" || 
                          utxo?.scriptPubKey?.type === "witness_v0_scripthash" ||
@@ -115,11 +117,11 @@ export const generateAtomicNameTradingPSBT = async (name, fundingUtxoAddresses, 
         };
 
         if (isSegWit) {
-            console.log("adding segwit name_op as input", utxo);
+
             if (utxo.scriptPubKey && utxo.value !== undefined) {
                 input.witnessUtxo = {
                     script: Buffer.from(utxo.scriptPubKey.hex, 'hex'),
-                    value: Math.floor(utxo.value),
+                    value: utxo.value,
                 }
             } else {
                 console.error("Missing required data for segwit input", utxo);
@@ -141,7 +143,7 @@ export const generateAtomicNameTradingPSBT = async (name, fundingUtxoAddresses, 
         if (utxo.redeemScript) {
             input.redeemScript = Buffer.from(utxo.redeemScript, 'hex');
         }
-
+        console.log("adding segwit name_op as input", input);
         psbt.addInput(input);
         totalInputAmount += Math.floor(utxo.value);
     })
