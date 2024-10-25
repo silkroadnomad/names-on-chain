@@ -102,8 +102,8 @@ export const generateAtomicNameTradingPSBT = async (name, fundingUtxoAddresses, 
     }
 
     filteredNameOpTxs.forEach(utxo => {
-        console.log("filteredNameOpTxs->",utxo)
-        console.log("utxo.scriptPubKey.type",utxo?.scriptPubKey?.type)
+        console.log("filteredNameOpTxs->", utxo)
+        console.log("utxo.scriptPubKey.type", utxo?.scriptPubKey?.type)
         const scriptPubKeyHex = utxo.hex;
         const isSegWit = utxo?.scriptPubKey?.type === "witness_v0_keyhash" || 
                          utxo?.scriptPubKey?.type === "witness_v0_scripthash" ||
@@ -117,21 +117,21 @@ export const generateAtomicNameTradingPSBT = async (name, fundingUtxoAddresses, 
         };
 
         if (isSegWit) {
-
             if (utxo.scriptPubKey && utxo.value !== undefined) {
                 input.witnessUtxo = {
                     script: Buffer.from(utxo.scriptPubKey.hex, 'hex'),
                     value: utxo.value,
-                }
+                };
             } else {
                 console.error("Missing required data for segwit input", utxo);
                 return; // Skip this input if we don't have the required data
             }
+            
+            // Add witnessScript for P2WSH
             if (utxo.witnessScript) {
                 input.witnessScript = Buffer.from(utxo.witnessScript, 'hex');
             }
         } else {
-            console.log("adding non-segwit name_op as input", utxo);
             if (utxo.hex) {
                 input.nonWitnessUtxo = Buffer.from(utxo.hex, 'hex');
             } else {
@@ -140,10 +140,12 @@ export const generateAtomicNameTradingPSBT = async (name, fundingUtxoAddresses, 
             }
         }
 
+        // Add redeemScript for P2SH or P2SH-wrapped SegWit
         if (utxo.redeemScript) {
             input.redeemScript = Buffer.from(utxo.redeemScript, 'hex');
         }
-        console.log("adding segwit name_op as input", input);
+
+        console.log("Adding input:", input);
         psbt.addInput(input);
         totalInputAmount += Math.floor(utxo.value);
     })
