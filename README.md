@@ -101,4 +101,126 @@ ipfs add -r lesson02
 - Reactive programming in Svelte
 - Error handling in asynchronous operations
 
-### Lesson 5) Marketplace 
+### Lesson 5) Marketplace
+
+The marketplace allows users to buy and sell Doichain names in a decentralized way using atomic transactions. This trading approach was first introduced by [Namecoin's atomic name trading protocol](https://github.com/namecoin/proposals/blob/master/atomic-trading/atomic-trading.mediawiki), which Doichain has extended to use modern PSBT (Partially Signed Bitcoin Transaction) files and QR codes for improved usability. This ensures that trades are executed safely without requiring trust between parties.
+
+For the implementation, we forked the open-source BlueWallet project to create DoiWallet, leveraging its robust PSBT scanning capabilities. We then extended both DoiWallet and the underlying bitcoinjs-lib library to support Namecoin-style NameOp transactions, enabling seamless atomic name trading through a mobile-first interface.
+
+#### Overview
+- Trading names using atomic transactions
+- Creating sell offers
+- Creating buy offers
+- Completing trades
+- Understanding PSBT (Partially Signed Bitcoin Transactions)
+
+#### Key Concepts
+
+1. **Atomic Name Trading**
+   - Atomic transactions ensure that either both parties get what they want, or neither does
+   - Uses PSBT (Partially Signed Bitcoin Transaction) format
+   - No intermediaries or escrow required
+
+2. **Sell Offers**
+   - Current name owner creates Part 1 of PSBT
+   - Sets desired price in DOI
+   - Signs their name input
+   - Shares PSBT with potential buyers
+
+3. **Buy Offers**
+   - Buyer receives Part 1 of PSBT
+   - Adds funding inputs and outputs
+   - Signs their inputs
+   - Returns completed PSBT to seller
+
+4. **Trade Completion**
+   - Seller verifies and signs completed PSBT
+   - Transaction is broadcast to network
+   - Name ownership transfers when transaction confirms
+
+#### Code Example
+```javascript
+// Example of creating a sell offer
+async function createSellOffer(name, price, nameUtxo) {
+    const psbt = new Psbt({ network });
+    
+    // Add name input
+    psbt.addInput({
+        hash: nameUtxo.txid,
+        index: nameUtxo.vout,
+        witnessUtxo: nameUtxo.witnessUtxo
+    });
+    
+    // Add price output
+    psbt.addOutput({
+        address: sellerAddress,
+        value: price
+    });
+    
+    // Sign name input
+    psbt.signInput(0, sellerKeyPair);
+    
+    return psbt.toBase64();
+}
+
+// Example of creating a buy offer
+async function createBuyOffer(sellOfferPsbt, fundingUtxos) {
+    const psbt = Psbt.fromBase64(sellOfferPsbt);
+    
+    // Add funding inputs
+    fundingUtxos.forEach(utxo => {
+        psbt.addInput({
+            hash: utxo.txid,
+            index: utxo.vout,
+            witnessUtxo: utxo.witnessUtxo
+        });
+    });
+    
+    // Add change output if needed
+    if (change > 0) {
+        psbt.addOutput({
+            address: buyerAddress,
+            value: change
+        });
+    }
+    
+    // Sign funding inputs
+    fundingUtxos.forEach((_, index) => {
+        psbt.signInput(index + 1, buyerKeyPair);
+    });
+    
+    return psbt.toBase64();
+}
+```
+
+#### Practice Exercise
+
+1. Create a sell offer for a name you own:
+   - Set a reasonable price
+   - Generate and share the PSBT
+   - Verify the PSBT contains your signed name input
+
+2. Create a buy offer for someone else's name:
+   - Get their sell offer PSBT
+   - Add your funding inputs
+   - Sign your inputs
+   - Return the completed PSBT
+
+3. Complete a trade:
+   - As the seller, verify the completed PSBT
+   - Sign any remaining inputs
+   - Broadcast the transaction
+   - Monitor for confirmation
+
+#### Key Takeaways
+
+- Atomic transactions provide trustless trading of names
+- PSBTs enable multi-step transaction construction
+- Both parties must sign their respective inputs
+- Transaction only completes when fully signed
+
+#### Additional Resources
+
+- [BIP 174: PSBT Format](https://github.com/bitcoin/bips/blob/master/bip-0174.mediawiki)
+- [Understanding Bitcoin Transactions](https://developer.bitcoin.org/devguide/transactions.html)
+- [Bitcoin Script](https://en.bitcoin.it/wiki/Script)
