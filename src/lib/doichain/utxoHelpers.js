@@ -22,7 +22,6 @@ export async function getUtxosAndNamesOfAddress(electrumClient, doichainAddress)
     const result = await getUTXOSFromAddress(electrumClient, doichainAddress)
     for (let utxo of result) {
         const scriptPubKey = utxo.fullTx.scriptPubKey;
-        console.log("scriptPubKey?.nameOp",utxo)
         if (!scriptPubKey?.nameOp) {
             utxoAddresses.push({
                 formattedBlocktime: utxo.fullTx.formattedBlocktime,

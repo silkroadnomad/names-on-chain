@@ -11,76 +11,88 @@
     import { onDestroy } from "svelte";
     import { generateAtomicNameTradingPSBT } from "$lib/doichain/atomicNameTrading.js";
 
-    /**
-     * The name currently typed in the name input
-     */
+    /** @type {string} - The name currently typed in the name input */
     let name = ''
 
-    /**
-     * Is everything ok with the name inside the name input?
-     */
+    /** @type {boolean} - Indicates if the name input is valid */
     let isNameValid = true;
 
-    /**
-     * Is the name already to be found on the blockchain
-     */
-    let nameExists = true
+    /** @type {boolean} - Indicates if the name already exists on the blockchain */
+    let isNameExists = true
 
-    /**
-     * If there is an issue with the name, this variable contains the error
-     */
+    /** @type {string} - Error message if there's an issue with the name */
     let nameErrorMessage = '';
 
-    /**
-     * The address which will be used to look for
-     * - utxos (inputs)
-     * - as recipient for the name transaction
-     * - change address
+    /** @type {string} - The Doichain address used for UTXOs, transaction recipient, and change
+     * Used for:
+     * - UTXOs (inputs)
+     * - Transaction recipient
+     * - Change address
      */
-    let doichainAddress = localStorage.getItem('doichainAddress') || '';
-    $:localStorage.setItem('doichainAddress',doichainAddress)
+    let doichainAddress = '';
+    try {
+        doichainAddress = localStorage.getItem('doichainAddress') || '';
+    } catch (e) {
+        console.error('Failed to access localStorage:', e);
+    }
+    $:localStorage.setItem('doichainAddress', doichainAddress)
 
-    /**
-     * Values to calculate the change amount and display a proper 'invoice'
-     */
-    let totalUtxoValue = 0, totalAmount = 0;
+    /** @type {number} - Total value of all UTXOs */
+    let totalUtxoValue = 0;
+    /** @type {number} - Total amount for the transaction */
+    let totalAmount = 0;
 
-    /**
-     * Array of name operation transactions associated with the current address
-     * @type {Array<string>}
-     */
+    /** @type {Array<Object>} - Array of name operation transactions for the current address */
     let nameOpTxs = [];
-    /**
-     * Indicates whether the UTXO address is valid
-     * @type {boolean}
-     */
+
+    /** @type {boolean} - Indicates if the UTXO address is valid */
     let isUTXOAddressValid = true;
-    /**
-     * Error message for UTXO address validation issues
-     * @type {string}
-     */
+
+    /** @type {string} - Error message for UTXO address validation issues */
     let utxoErrorMessage = '';
 
+    /** @type {Array<Object>} - Array of UTXO addresses */
     let utxoAddresses = [];
+
+    /** @type {string} - Base64 encoded PSBT text */
     let psbtBaseText;
-    let scanOpenFunding = false
+
+    /** @type {boolean} - Controls visibility of funding scan modal */
+    let scanOpenFunding = false;
+
+    /** @type {Object} - Current name operation details */
     let currentNameOp;
+
+    /** @type {Object} - Current name UTXO details */
     let currentNameUtxo;
+
+    /** @type {string} - Address used for funding UTXOs */
     let fundingUTXOAddress = localStorage.getItem('fundingUTXOAddress') || 'N8YtTBMRqMq9E45VMT9KVbfwt5X5oLD4vt';
     $:localStorage.setItem('fundingUTXOAddress',fundingUTXOAddress)
 
-    /**
-     * Indicates whether the funding UTXO address is valid
-     * @type {boolean}
-     */
-    let isConnected = false
-    let isFundingUTXOAddressValid = true
-    let transferPrice = 1
-    let fundingTotalAmount = 0
-    let fundingTotalUtxoValue = 0
-    let fundingUtxoAddresses = []
-    let buyOfferValid = false
-    $:fundingTotalAmount=transferPrice+storageFee //+miningFee TODO
+    /** @type {boolean} - Indicates if connected to the network */
+    let isConnected = false;
+
+    /** @type {boolean} - Indicates if the funding UTXO address is valid */
+    let isFundingUTXOAddressValid = true;
+
+    /** @type {number} - Price for transferring the name */
+    let transferPrice = 1;
+
+    /** @type {number} - Total amount needed for funding */
+    let fundingTotalAmount = 0;
+
+    /** @type {number} - Total value of funding UTXOs */
+    let fundingTotalUtxoValue = 0;
+
+    /** @type {Array<Object>} - Array of funding UTXO addresses */
+    let fundingUtxoAddresses = [];
+
+    /** @type {boolean} - Indicates if the buy offer is valid */
+    let isBuyOfferValid = false;
+
+    /** @type {number} - Reactive calculation of total funding amount */
+    $: fundingTotalAmount = transferPrice + DEFAULT_STORAGE_FEE;
 
 
     /**
@@ -92,17 +104,10 @@
         doichainAddress = result.currentNameAddress
         isNameValid = result.isNameValid
         nameErrorMessage  = result.nameErrorMessage
-        nameExists = result.nameExists
+        isNameExists = result.nameExists
         isUTXOAddressValid = result.isUTXOAddressValid
         currentNameOp = result.currentNameOp
         currentNameUtxo = result.currentNameUtxo
-       /* if(!nameExists || !isNameValid){
-                qrCodeData = undefined;
-                psbtBaseText = undefined;
-                transactionFee = 0;
-                changeAmount = 0;
-                totalAmount = 0;
-        }*/
     }
 
     /**
@@ -116,7 +121,16 @@
     /**
      * Check a name, debounce every keyboard typing, return local variables by callback
      */
-    $: name ? checkName($electrumClient, doichainAddress, name, totalUtxoValue, totalAmount, nameCheckCallback) : null;
+    $: {
+        if (name) {
+            try {
+                checkName($electrumClient, doichainAddress, name, totalUtxoValue, totalAmount, nameCheckCallback);
+            } catch (error) {
+                console.error('Error checking name:', error);
+                // Handle error appropriately
+            }
+        }
+    }
 
     /**
      * If we have a connection to Electrumx and a doichainAddress get UTXOs without and with NameOps.
@@ -152,7 +166,7 @@
     /**
      * @type {number} storageFee - The fee for storing the name on the Doichain network, in swartz. Default is 1,000,000 (0.01 DOI).
      */
-    let storageFee = 1000000;
+    const DEFAULT_STORAGE_FEE = 1_000_000;
 
     /**
      * @type {number} transactionFee - The fee for processing the transaction on the network, in swartz. Initially set to 0 and calculated later.
@@ -190,8 +204,8 @@
      * Reactive block for handling name registration transaction and QR code generation.
      */
     $: {
-        if(name && isNameValid && !nameExists) {
-            const result = signTransaction(utxoAddresses, name, $network, storageFee, doichainAddress, doichainAddress, doichainAddress);
+        if(name && isNameValid && !isNameExists) {
+            const result = signTransaction(utxoAddresses, name, $network, DEFAULT_STORAGE_FEE, doichainAddress, doichainAddress, doichainAddress);
             console.log("signTransaction:result",result)
             if (result.error) {
                 console.log("error",result)
@@ -259,8 +273,8 @@
     });
 
     $: totalUtxoValue = utxoAddresses.reduce((sum, utxo) => sum + utxo.value, 0);
-    $: if (name && nameExists && (ownerOfName || fundingUtxoAddresses.length > 0)) {
-        generateAtomicNameTradingPSBT(name, fundingUtxoAddresses, currentNameUtxo?[currentNameUtxo]:[], ownerOfName, nameExists, transferPrice, storageFee, $network).then( (_psbtBaseText) => {
+    $: if (name && isNameExists && (ownerOfName || fundingUtxoAddresses.length > 0)) {
+        generateAtomicNameTradingPSBT(name, fundingUtxoAddresses, currentNameUtxo?[currentNameUtxo]:[], ownerOfName, isNameExists, transferPrice, DEFAULT_STORAGE_FEE, $network).then( (_psbtBaseText) => {
             psbtBaseText = _psbtBaseText;
             if(bbqr)
                 renderBBQR(_psbtBaseText).then(imgurl => qrCodeData = imgurl)
@@ -268,7 +282,7 @@
                 renderBCUR(_psbtBaseText).then(_qr => {
                     if(!_qr) return
                     qrCodeData = _qr;
-                    buyOfferValid = true
+                    isBuyOfferValid = true
                     displayQrCodes();
                 }).catch(error => {
                     console.error('Error generating QR code:', error);
@@ -277,7 +291,7 @@
         });
     }
 
-    function incrementQRIndex() {
+    function handleQRCodeClick() {
         if (qrCodeData && qrCodeData.length > 0) {
             currentSvgIndex = (currentSvgIndex + 1) % qrCodeData.length;
             qrCode = qrCodeData[currentSvgIndex];
@@ -376,7 +390,7 @@
                             {/if}
                         </div>
                         <p>&nbsp;</p>
-                        {#if nameExists}
+                        {#if isNameExists}
                             <div class="flex items-center justify-between">
                               <span class="flex flex-grow flex-col">
                                 <span class="text-sm font-medium leading-6 text-gray-900" id="availability-label">{ownerOfName?'I am owner of that name. I make a sell offer':'I am NOT the owner of the name. I make a buy offer'}</span>
@@ -443,7 +457,7 @@
                     <div class="mt-6">
                         <div class="flex justify-between mt-2">
                             <span class="text-sm font-bold tracking-tight text-gray-900">Storage Fee:</span>
-                            <span class="text-sm font-semibold leading-6 tracking-wide text-gray-600">{sb.toBitcoin(storageFee)} DOI</span>
+                            <span class="text-sm font-semibold leading-6 tracking-wide text-gray-600">{sb.toBitcoin(DEFAULT_STORAGE_FEE)} DOI</span>
                         </div>
                         <div class="flex justify-between mt-2">
                             <span class="text-sm font-bold tracking-tight text-gray-900">Mining Fee:</span>
@@ -460,9 +474,9 @@
                     </div>
                     <div id="qr-container"></div>
                     utxos to sign: {fundingUtxoAddresses.length}
-                    {#if qrCodeData && psbtBaseText && (psbtBaseText || buyOfferValid)}
+                    {#if qrCodeData && psbtBaseText && (psbtBaseText || isBuyOfferValid)}
                         {@html qrCode}
-                        <div on:click={incrementQRIndex} class="cursor-pointer">
+                        <div on:click={handleQRCodeClick} class="cursor-pointer">
                             { currentSvgIndex + 1 } / { qrCodeData ? qrCodeData.length : 0 }
                         </div>
                         <div class="mt-4">
